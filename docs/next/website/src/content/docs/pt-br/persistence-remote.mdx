@@ -39,7 +39,7 @@ herdr session delete side-project --json
 
 ## Máquinas SSH salvas
 
-Para manter o Local e várias máquinas SSH em uma única janela do Herdr, veja [Conectar máquinas](/pt-br/docs/connecting-machines/). Esse guia cobre a configuração, a troca entre máquinas, as reconexões, os ajustes e a automação remota. Remover uma máquina salva só desconecta o cliente. Isso não para as sessões dessa máquina.
+Para manter o Local e várias máquinas SSH em uma única janela do Herdr, veja [Conectar máquinas](/pt-br/docs/connecting-machines/). Esse guia cobre a configuração, a troca entre máquinas, as reconexões, os ajustes e a automação remota. Remover uma máquina salva só desconecta o cliente e não para as sessões dessa máquina.
 
 ## Anexar remotamente via SSH
 
@@ -50,11 +50,11 @@ herdr --remote workbox
 herdr --remote ssh://you@server:2222
 ```
 
-Nesse modo, o servidor remoto é o dono dos painéis em execução e envia o conteúdo dos terminais e o estado da sessão via SSH. O Herdr local desenha a interface, incluindo a barra lateral, os menus e o tema. Como o cliente roda localmente, o Herdr consegue levar recursos do desktop local para a sessão remota. Um exemplo é colar uma imagem da área de transferência: o Herdr copia a imagem para um arquivo temporário remoto e cola esse caminho.
+Nesse modo, o servidor remoto é o dono dos painéis em execução e envia o conteúdo dos terminais e o estado da sessão via SSH. O Herdr local desenha a interface, incluindo a barra lateral, os menus e o tema. Como o cliente roda localmente, o Herdr consegue levar recursos do desktop local para a sessão remota. Por exemplo, para colar uma imagem da área de transferência, o Herdr copia a imagem para um arquivo temporário remoto e cola esse caminho.
 
-Por padrão, `herdr --remote` usa os seus atalhos de teclado locais do Herdr nessa anexação. Assim você mantém a memória muscular local mesmo quando o servidor remoto tem outra configuração. Depois de editar os atalhos locais, use a ação `reload config` da interface para aplicá-los sem desanexar. Use `--remote-keybindings server` quando quiser a configuração do servidor remoto. Os atalhos locais de comandos personalizados não são enviados, porque esses comandos rodariam no host remoto.
+Por padrão, `herdr --remote` usa os seus atalhos de teclado locais do Herdr nessa anexação. Assim você mantém a memória muscular local mesmo quando o servidor remoto tem outra configuração. Depois de editar os atalhos locais, use a ação `reload config` da interface para aplicá-los sem desanexar. Use `--remote-keybindings server` quando quiser a configuração do servidor remoto. O Herdr não envia os atalhos locais de comandos personalizados, porque esses comandos rodariam no host remoto.
 
-Para destinos que você usa sempre, use a configuração do SSH:
+Para destinos frequentes, use a configuração do SSH:
 
 ```text
 Host workbox
@@ -69,11 +69,11 @@ Depois, anexe com:
 herdr --remote workbox
 ```
 
-A anexação remota e as máquinas SSH salvas suportam clientes locais Linux, macOS e Windows conectando a hosts Linux ou macOS em x86_64 e aarch64, ou a hosts Windows em x86_64. As versões local e remota não precisam ser iguais quando as duas suportam a geração estável do endpoint. Em hosts Linux e macOS, o Herdr prefere um `herdr` compatível que já esteja no `PATH` remoto. Depois, confere os caminhos comuns de instalação direta, Homebrew, mise e perfil do Nix. Em hosts Windows, o Herdr confere o `PATH` e a versão gerenciada ativa. Se não existir um binário compatível, as execuções interativas oferecem instalar ou atualizar um. As execuções não interativas falham em vez de modificar o host. Instalações no Linux e no macOS usam `~/.local/bin/herdr`. Instalações no Windows usam o pacote completo do Windows e o runtime ConPTY local do app. Se `~/.local/bin` não estiver no `PATH` remoto, o Herdr avisa depois da instalação.
+A anexação remota e as máquinas SSH salvas funcionam com clientes locais Linux, macOS e Windows que se conectam a hosts Linux ou macOS em x86_64 e aarch64, ou a hosts Windows em x86_64. As versões local e remota não precisam ser iguais quando as duas têm suporte à geração estável do endpoint. Em hosts Linux e macOS, o Herdr prefere um `herdr` compatível que já esteja no `PATH` remoto. Depois, confere os caminhos comuns de instalação direta, Homebrew, mise e perfil do Nix. Em hosts Windows, o Herdr confere o `PATH` e a versão gerenciada ativa. Se não existir um binário compatível, as execuções interativas oferecem instalar ou atualizar um. As execuções não interativas falham em vez de modificar o host. Instalações no Linux e no macOS usam `~/.local/bin/herdr`. Instalações no Windows usam o pacote completo do Windows e o runtime ConPTY local do app. Se `~/.local/bin` não estiver no `PATH` remoto, o Herdr avisa depois da instalação.
 
 Por padrão, `herdr --remote` roda a configuração remota e a ponte por meio de uma configuração SSH temporária. Essa configuração inclui primeiro a sua configuração do SSH e depois acrescenta ajustes de keepalive como fallback. Os ajustes de keepalive que você já tem vencem. Clientes Linux e macOS também usam um socket de controle privado por anexação para reaproveitar a conexão. O OpenSSH do Windows não faz isso. Defina `[remote].manage_ssh_config = false` para usar o `ssh` puro, sem a configuração gerada pelo Herdr nem o socket de controle.
 
-A anexação remota usa a autenticação normal do OpenSSH. Se o destino usa uma chave protegida por passphrase em um shell não interativo, script, job de CI ou terminal móvel que não consegue mostrar o pedido da passphrase, carregue a chave no ssh-agent antes:
+A anexação remota usa a autenticação normal do OpenSSH. Se o destino usa uma chave protegida por passphrase em um shell não interativo, script, job de CI ou terminal móvel que não consegue mostrar o pedido da passphrase, carregue a chave no agent SSH antes:
 
 ```bash
 ssh-add
@@ -90,7 +90,7 @@ herdr --remote workbox --handoff
 
 Se você entrar no servidor por SSH primeiro e executar `herdr` lá, o Herdr roda inteiro no servidor e não acessa a área de transferência do seu desktop local além da colagem normal de texto do terminal.
 
-Em hosts Linux e macOS, o Herdr pode copiar o binário local atual quando as plataformas são iguais. Em instalações via Homebrew, mise e Nix, quando as plataformas são diferentes, ou em hosts Windows, ele baixa o arquivo da versão correspondente à versão atual do cliente a partir de `https://herdr.dev/latest.json`.
+Em hosts Linux e macOS, o Herdr pode copiar o binário local atual quando as plataformas são iguais. Em instalações via Homebrew, mise e Nix, quando as plataformas são diferentes, ou em hosts Windows, ele baixa o arquivo publicado que corresponde à versão atual do cliente, a partir de `https://herdr.dev/latest.json`.
 
 Em builds locais ou pacotes personalizados, defina `HERDR_REMOTE_BINARY` com o caminho de um arquivo local antes de rodar a anexação remota. Use um executável do Herdr solto para destinos Linux ou macOS e um pacote `herdr-windows-x86_64.zip` completo para destinos Windows.
 
@@ -108,7 +108,7 @@ herdr --remote workbox --session agents
 
 ## Anexar direto a um terminal
 
-A anexação completa do Herdr abre a interface inteira do workspace. A anexação direta abre um único terminal do servidor no seu terminal atual.
+A anexação completa do Herdr abre a interface inteira do workspace. A anexação direta abre no seu terminal atual um único terminal que pertence ao servidor.
 
 A anexação direta a um terminal está disponível no Linux e no macOS, mas não no Windows nativo.
 
@@ -148,4 +148,4 @@ Em uma ponte interativa, use um controlador de sessão de terminal com escrita:
 herdr terminal session control w1:p1 --takeover --cols 120 --rows 40
 ```
 
-O modo de controle imprime os mesmos registros de frame delimitados por nova linha e lê comandos JSON delimitados por nova linha no stdin. `terminal.input` envia texto ou bytes em base64, `terminal.resize` muda a área visível do controlador, `terminal.scroll` rola a área visível anexada, `terminal.mouse` envia um evento de mouse em uma célula para aplicações que ativaram o relato de mouse, e `terminal.release` fecha o controlador. Só um controlador por vez controla a entrada e o redimensionamento.
+O modo de controle imprime os mesmos registros de frame delimitados por nova linha e lê comandos JSON delimitados por nova linha no stdin. `terminal.input` envia texto ou bytes em base64, `terminal.resize` muda a área visível do controlador, `terminal.scroll` rola a área visível anexada, `terminal.mouse` envia um evento de mouse em uma célula para aplicações que ativaram o envio de eventos de mouse, e `terminal.release` fecha o controlador. Só um controlador por vez é dono da entrada e do redimensionamento.

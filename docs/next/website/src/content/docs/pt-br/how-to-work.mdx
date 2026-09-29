@@ -25,7 +25,7 @@ Reanexe depois:
 herdr
 ```
 
-Se quiser terminar a sessão e parar os painéis dela, encerre o servidor:
+Se quiser encerrar a sessão e parar os painéis dela, encerre o servidor:
 
 ```bash
 herdr server stop
@@ -40,7 +40,7 @@ ssh you@server
 herdr
 ```
 
-Isso funciona como um multiplexador de terminal. O seu shell é remoto. O servidor do Herdr é remoto. Os agentes e os painéis rodam na máquina remota. Desanexe com `ctrl+b q`, desconecte, depois volte por SSH e rode `herdr` de novo.
+Esse caminho funciona como um multiplexador de terminal. O seu shell é remoto. O servidor do Herdr é remoto. Os agentes e os painéis rodam na máquina remota. Desanexe com `ctrl+b q`, desconecte, depois volte por SSH e rode `herdr` de novo.
 
 Use esse caminho quando você já trabalha dentro de um shell SSH, quando está em um cliente SSH no celular ou no tablet, ou quando quer a configuração mais simples.
 
@@ -79,7 +79,7 @@ herdr --remote ssh://you@server:2222
 
 O servidor remoto mantém os painéis rodando e envia o conteúdo do terminal e o estado da sessão por SSH. O seu Herdr local desenha a interface com o seu tema e as suas configurações de apresentação locais.
 
-Use esse caminho quando quiser que a sessão remota pareça local. O cliente roda na sua máquina, então o Herdr pode repassar ao servidor remoto recursos do desktop local, como colar imagens da área de transferência. Se você entrar por SSH primeiro e rodar `herdr` no servidor, o Herdr roda inteiro naquele servidor e não consegue ler a área de transferência do seu desktop local.
+Use esse caminho quando quiser que a sessão remota pareça local. O cliente roda na sua máquina, então o Herdr pode repassar ao servidor remoto recursos do desktop local, como colar imagens da área de transferência. Se você entrar por SSH primeiro e rodar `herdr` no servidor, o Herdr roda inteiramente naquele servidor e não consegue ler a área de transferência do seu desktop local.
 
 Para destinos que você usa sempre, coloque o host na sua configuração do SSH:
 
@@ -90,7 +90,7 @@ Host workbox
   Port 2222
 ```
 
-Depois anexe com:
+Depois, anexe com:
 
 ```bash
 herdr --remote workbox

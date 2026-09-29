@@ -32,7 +32,7 @@ herdr --default-config > ~/.config/herdr/config.toml
 
 Se um valor de configuração for inválido, o Herdr volta para um padrão seguro e mostra um aviso na inicialização.
 
-O Herdr mostra a configuração da primeira execução quando `onboarding` está ausente ou é true. Continuar a partir do onboarding grava `onboarding = false` e abre as configurações na aba de integrações. Defina `onboarding = false` para pular esse fluxo depois da configuração inicial.
+O Herdr mostra a configuração da primeira execução quando `onboarding` está ausente ou vale true. Ao continuar a partir do onboarding, o Herdr grava `onboarding = false` e abre as configurações na aba de integrações. Defina `onboarding = false` para pular esse fluxo depois da configuração inicial.
 
 ```toml
 onboarding = false
@@ -54,7 +54,7 @@ Temas, layouts da barra lateral, comportamento de cópia e outras configuraçõe
 
 ## Tamanho do terminal headless
 
-Quando nenhum cliente está anexado, o servidor usa um terminal virtual de 120×40 para o layout e para os painéis novos. Para orquestração headless, mude esse valor de reserva com:
+Quando nenhum cliente está anexado, o servidor usa um terminal virtual de 120×40 para o layout e para os painéis novos. Para orquestração headless, mude esse fallback com:
 
 ```toml
 [server]
@@ -62,7 +62,7 @@ headless_cols = 160
 headless_rows = 50
 ```
 
-Com um cliente anexado, todas as abas seguem o tamanho dele. Com vários clientes, cada aba visualizada segue o cliente que a focou, selecionou ou interagiu com ela por último. Quando todos os clientes menos um se desanexam (detach), todas as abas voltam na hora ao tamanho do cliente restante. Quando não resta nenhum cliente, os PTYs dos painéis existentes mantêm o último tamanho e o novo layout headless usa o valor de reserva configurado.
+Com um cliente anexado, todas as abas seguem o tamanho dele. Com vários clientes, cada aba visualizada segue o cliente que a focou, selecionou ou interagiu com ela por último. Quando todos os clientes menos um se desanexam (detach), todas as abas voltam na hora ao tamanho do cliente restante. Quando não resta nenhum cliente, os PTYs dos painéis existentes mantêm o último tamanho e o novo layout headless usa o fallback configurado.
 
 ## Padrões do terminal
 
@@ -91,7 +91,7 @@ Defina a política de diretório de trabalho para novos painéis, abas e workspa
 new_cwd = "follow"
 ```
 
-`new_cwd = "follow"` mantém o comportamento padrão e herda o diretório do painel ou workspace de origem. Quando não há workspace de origem, o Herdr começa em `$HOME`. Use `"home"` para sempre começar em `$HOME`, `"current"` para usar o diretório do processo do Herdr ou um caminho fixo como `"~/Projects"`. Valores explícitos de `--cwd` vindos da CLI ou da API do socket continuam tendo precedência.
+`new_cwd = "follow"` mantém o comportamento padrão e herda o diretório do painel ou workspace de origem. Quando não há workspace de origem, o Herdr começa em `$HOME`. Use `"home"` para sempre começar em `$HOME`, `"current"` para usar o diretório do processo do Herdr ou um caminho fixo como `"~/Projects"`. Valores explícitos de `--cwd` vindos da CLI ou da API de socket continuam tendo precedência.
 
 ## Worktrees
 
@@ -102,9 +102,9 @@ Defina o diretório raiz que o Herdr usa para os checkouts de worktrees do Git c
 directory = "~/.herdr/worktrees"
 ```
 
-O Herdr cria os checkouts em `<directory>/<repo>/<branch-slug>`. Para checkouts lado a lado com o repositório, defina um diretório como `~/Projects/herdr-worktrees`. O app resolve valores relativos para um caminho absoluto quando aplica a configuração.
+O Herdr cria os checkouts em `<directory>/<repo>/<branch-slug>`. Para deixar os checkouts ao lado do repositório, defina um diretório como `~/Projects/herdr-worktrees`. O app resolve valores relativos para um caminho absoluto quando aplica a configuração.
 
-As ações de worktree ficam nas linhas de workspaces do Git. `New worktree` cria um checkout. Se a branch digitada já existe localmente, o Herdr faz checkout dela. Caso contrário, cria a branch. Em seguida, abre o checkout como um novo workspace do Herdr e o agrupa sob o workspace de origem. `Open worktree...` lista os checkouts de worktrees do Git que já existem para aquele repositório. Escolher um checkout já aberto foca nele, e escolher um checkout fechado o abre no mesmo grupo.
+As ações de worktree ficam nas linhas de workspaces do Git. `New worktree` cria um checkout. Se a branch digitada já existe localmente, o Herdr faz checkout dela. Caso contrário, cria a branch. Em seguida, abre o checkout como um novo workspace do Herdr e o agrupa sob o workspace de origem. `Open worktree...` lista os checkouts de worktrees do Git que já existem para aquele repositório. Se você escolhe um checkout já aberto, o Herdr foca nele. Um checkout fechado abre no mesmo grupo.
 
 Worktrees agrupados continuam se comportando como workspaces normais do Herdr. Você pode focar, renomear e fechar cada um, e cada um tem suas próprias abas e painéis. A linha pai é o workspace original. Fechar a linha pai fecha o grupo inteiro no Herdr, mas não apaga as pastas de checkout nem as branches.
 
@@ -119,7 +119,7 @@ Por padrão, a anexação remota gerencia a conexão SSH com keepalives temporá
 manage_ssh_config = true
 ```
 
-Com essa opção ativa, `herdr --remote` grava uma configuração SSH temporária e privada que inclui primeiro as suas configurações SSH de usuário e do sistema e depois acrescenta valores de reserva para `ServerAliveInterval` e `ServerAliveCountMax`. As suas próprias configurações de keepalive têm precedência. Clientes Linux e macOS também usam um socket de controle privado do OpenSSH por anexação, para reutilizar a primeira conexão autenticada. O OpenSSH do Windows não faz isso. Defina `manage_ssh_config = false` para fazer a anexação remota pelo `ssh` puro, sem a configuração gerada pelo Herdr nem o socket de controle.
+Com essa opção ativa, `herdr --remote` grava uma configuração SSH temporária e privada. Essa configuração inclui primeiro as suas configurações SSH de usuário e do sistema e depois acrescenta valores de fallback para `ServerAliveInterval` e `ServerAliveCountMax`. Suas próprias configurações de keepalive têm precedência. Clientes Linux e macOS também usam um socket de controle privado do OpenSSH por anexação, para reutilizar a primeira conexão autenticada. O OpenSSH do Windows não faz isso. Defina `manage_ssh_config = false` para fazer a anexação remota pelo `ssh` puro, sem a configuração gerada pelo Herdr nem o socket de controle.
 
 ## Atalhos de teclado
 
@@ -160,7 +160,7 @@ Um atalho também pode ser um array quando uma ação precisa de vários atalhos
 next_tab = ["prefix+n", "ctrl+alt+]"]
 ```
 
-As ações opcionais ficam sem atalho por padrão. Associe-as com `prefix+` para o comportamento no modo de prefixo, ou use uma combinação explícita com modificador quando quiser de propósito um atalho direto. Por exemplo, redimensionar painéis com um só toque, no estilo do tmux, sem entrar no modo de redimensionamento:
+As ações opcionais ficam sem atalho por padrão. Associe-as com `prefix+` para o comportamento no modo de prefixo, ou use uma combinação de teclas explícita com modificador quando quiser um atalho direto de propósito. Por exemplo, redimensionar painéis com um só toque, no estilo do tmux, sem entrar no modo de redimensionamento:
 
 ```toml
 [keys]
@@ -170,7 +170,7 @@ resize_pane_up = "ctrl+shift+alt+up"
 resize_pane_right = "ctrl+shift+alt+right"
 ```
 
-As strings de tecla aceitam teclas simples, combinações com modificadores como `ctrl+a`, `shift+n`, `alt+1` e `cmd+k`, e teclas especiais como `enter`, `tab`, `esc`, `left`, `right`, `up` e `down`. Nomes de pontuação como `minus`, `comma`, `ampersand`, `plus` e `backtick` também são aceitos. Teclas imprimíveis simples usadas como atalho direto, como `n`, não são seguras porque interceptam a digitação. Use `prefix+n`, a menos que você queira de propósito um atalho direto. Os campos `navigate_workspace_*` e `navigate_pane_*` valem só no modo Navigate e podem usar teclas simples como `j` ou `k`. Eles não podem usar `prefix+`, `esc`, `enter`, `tab`, `shift+tab`, `left`, `right` nem `1` a `9` sem modificador. As setas para a esquerda e para a direita são aliases permanentes da navegação para o painel à esquerda e à direita. Esses atalhos do modo Navigate são independentes dos atalhos de ações gerais, como `focus_pane_down = "prefix+j"`. Quando os dois usam a mesma tecla, o atalho do modo Navigate vence enquanto esse modo está aberto. Alt, Cmd/Super e pontuação com modificadores dependem das configurações do seu terminal e do tmux.
+As strings de tecla aceitam teclas simples, combinações com modificadores como `ctrl+a`, `shift+n`, `alt+1` e `cmd+k`, e teclas especiais como `enter`, `tab`, `esc`, `left`, `right`, `up` e `down`. O Herdr também aceita nomes de pontuação como `minus`, `comma`, `ampersand`, `plus` e `backtick`. Teclas imprimíveis simples usadas como atalho direto, como `n`, não são seguras porque interceptam a digitação. Use `prefix+n`, a menos que você queira um atalho direto de propósito. Os campos `navigate_workspace_*` e `navigate_pane_*` valem só no modo de navegação e podem usar teclas simples como `j` ou `k`. Eles não podem usar `prefix+`, `esc`, `enter`, `tab`, `shift+tab`, `left`, `right` nem `1` a `9` sem modificador. As setas para a esquerda e para a direita são aliases permanentes da navegação para o painel à esquerda e à direita. Esses atalhos do modo de navegação são independentes dos atalhos de ações gerais, como `focus_pane_down = "prefix+j"`. Quando os dois usam a mesma tecla, o atalho do modo de navegação vence enquanto esse modo está aberto. Alt, Cmd/Super e pontuação com modificadores dependem das configurações do seu terminal e do tmux.
 
 Se você tem atalhos personalizados antigos e quer os novos padrões, execute `herdr config reset-keys`. O Herdr faz backup do `config.toml`, remove `[keys]` e `[[keys.command]]` e usa os padrões v2 embutidos depois de reiniciar ou de `herdr server reload-config`.
 
@@ -215,7 +215,7 @@ width = "80%"
 height = "80%"
 ```
 
-No Windows, use um comando de shell como `command = "powershell.exe -NoLogo"`. Saia do shell para fechar o popup e voltar à visualização dos terminais lado a lado.
+No Windows, use em vez disso um comando de shell como `command = "powershell.exe -NoLogo"`. Saia do shell para fechar o popup e voltar à visualização dos terminais lado a lado.
 
 `type = "pane"` abre um painel temporário com zoom e o fecha quando o comando termina.
 
@@ -235,7 +235,7 @@ description = "apply layout"
 
 Comandos personalizados recebem `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`, `HERDR_ACTIVE_WORKSPACE_ID`, `HERDR_ACTIVE_TAB_ID`, `HERDR_ACTIVE_PANE_ID` e `HERDR_ACTIVE_PANE_CWD` quando esses valores estão disponíveis. Comandos de shell rodam a partir do diretório de trabalho do painel focado quando o Herdr consegue detectá-lo.
 
-No Windows, as strings de comandos personalizados usam `cmd.exe /d /c`, então as variáveis de ambiente usam a sintaxe `%HERDR_BIN_PATH%`. Para rodar sintaxe do PowerShell, chame o PowerShell de forma explícita, por exemplo `powershell.exe -NoProfile -Command "..."`.
+No Windows, as strings de comandos personalizados usam `cmd.exe /d /c`, então as variáveis de ambiente usam a sintaxe `%HERDR_BIN_PATH%`. Para rodar sintaxe do PowerShell, chame o PowerShell explicitamente, por exemplo `powershell.exe -NoProfile -Command "..."`.
 
 ## Tema
 
@@ -260,7 +260,7 @@ light_name = "catppuccin-latte"
 dark_name = "catppuccin"
 ```
 
-`auto_switch` tem padrão `false`, então as configurações de tema existentes mantêm o comportamento manual. Se `light_name` ou `dark_name` for omitido, o Herdr usa a variante embutida correspondente ao `name` configurado quando ela existe, como `tokyo-night`/`tokyo-night-day` ou `gruvbox`/`gruvbox-light`. Escolher o tema manualmente em Settings desativa `auto_switch`.
+O padrão de `auto_switch` é `false`, então as configurações de tema existentes mantêm o comportamento manual. Se `light_name` ou `dark_name` for omitido, o Herdr usa a variante embutida correspondente ao `name` configurado quando ela existe, como `tokyo-night`/`tokyo-night-day` ou `gruvbox`/`gruvbox-light`. Escolher o tema manualmente em Settings desativa `auto_switch`.
 
 Você pode substituir cores individuais:
 
@@ -304,7 +304,7 @@ A barra lateral é o painel de controle principal do Herdr. Procure `ui.` na [Re
 
 `ui.pane_borders` aceita `"auto"` (o padrão, com bordas só em painéis divididos), `"always"` (também emoldura um painel único) ou `"off"`. A moldura de um painel único exige `ui.pane_outer_borders = true`, porque todas as bordas dele são bordas externas. Os valores booleanos existentes continuam válidos: `true` equivale a `"auto"` e `false` equivale a `"off"`.
 
-Defina `tab_bar_position = "bottom"` em `[ui]` para colocar a linha de abas do desktop abaixo dos painéis do terminal. As barras dos modos Prefix, Navigate, Copy e Resize substituem a linha de abas inferior enquanto estão ativas. O padrão é `"top"`.
+Defina `tab_bar_position = "bottom"` em `[ui]` para colocar a linha de abas do desktop abaixo dos painéis do terminal. As barras dos modos Prefix, Navigate, Copy e Resize substituem temporariamente a linha de abas inferior enquanto estão ativas. O padrão é `"top"`.
 
 Configure uma área de status ordenada, no estilo do tmux, na borda direita da linha de abas:
 
@@ -320,7 +320,7 @@ tab_bar_right = [
 tab_bar_right_separator = " · "
 ```
 
-A área de status fica vazia por padrão. Adicione `zoom` para mostrar um marcador fixo `ZOOM` enquanto a aba ativa estiver com zoom. Os marcadores `Z` de cada aba continuam independentes. `hostname`, `datetime` e `command` são resolvidos no servidor do Herdr, então `herdr --remote` mostra os valores da máquina remota. Entradas de data e hora usam a formatação do `strftime`. O Herdr rejeita diretivas que exigem fuso UTC ou timestamp Unix, como `%z` e `%s`, porque o valor é a hora local do servidor.
+A área de status fica vazia por padrão. Adicione `zoom` para mostrar um marcador fixo `ZOOM` enquanto a aba ativa estiver com zoom. Os marcadores `Z` de cada aba continuam independentes. `hostname`, `datetime` e `command` são resolvidos no servidor do Herdr, então `herdr --remote` mostra os valores da máquina remota. Entradas de data e hora usam a formatação do `strftime`. O Herdr rejeita diretivas que exigem deslocamento em relação ao UTC ou timestamp Unix, como `%z` e `%s`, porque o valor é a hora local do servidor.
 
 Entradas de comando rodam na hora e depois a cada `interval_seconds`, sem bloquear a renderização nem sobrepor uma execução anterior. O intervalo pode ir de 1 a 31.536.000 segundos, e o timeout de 1 a 3.600 segundos. O Herdr usa a última linha da saída bem-sucedida e remove as sequências de controle de terminal iniciadas por ESC em vez de interpretar os estilos. Ele limpa a entrada depois de uma falha, de uma saída vazia ou de estourar `timeout_seconds`. O comando recebe o mesmo contexto dos atalhos de comandos personalizados: workspace, aba e painel ativos, socket, binário e diretório de trabalho. Os comandos funcionam no Linux, no macOS e no Windows, com `/bin/sh -lc` no Linux e no macOS e `cmd.exe /d /c` no Windows.
 
@@ -337,11 +337,11 @@ window_title = "{hostname}: {workspace}"
 
 Os tokens são `{hostname}`, `{workspace}`, `{tab}`, `{pane}` (o nome manual do painel focado) e `{terminal_title}` (o título de terminal do próprio painel focado, sem os quadros do spinner). Escreva `{{` e `}}` para chaves literais. Um token sem valor fica vazio.
 
-O título é renderizado no servidor do Herdr, então `{hostname}` nomeia a máquina onde os painéis rodam, inclusive quando você anexa com `herdr --remote` ou executa `herdr` por SSH. Defina `window_title = ""` para não mexer no título do terminal externo.
+O servidor do Herdr renderiza o título, então `{hostname}` nomeia a máquina onde os painéis rodam, inclusive quando você anexa com `herdr --remote` ou executa `herdr` por SSH. Defina `window_title = ""` para não mexer no título do terminal externo.
 
 `client.window_title.set` substitui o título configurado até que `client.window_title.clear` o devolva.
 
-O status dos agentes usa pontos coloridos compactos por padrão. Para distinguir os estados bloqueado, trabalhando, concluído, ocioso e desconhecido pela forma além da cor, escolha **distinct symbols** em Settings ou configure:
+O status dos agentes usa pontos coloridos compactos por padrão. Para distinguir os estados bloqueado, trabalhando, concluído, ocioso e desconhecido pela forma, além da cor, escolha **distinct symbols** em Settings ou configure:
 
 ```toml
 [ui]
@@ -392,7 +392,7 @@ As linhas de Space aceitam estes tokens embutidos:
 - `git_status` mostra quantos commits o Git está à frente e atrás, quando esses números não são zero.
 - `$name` mostra o metadado personalizado do workspace chamado `name`.
 
-Os tokens aparecem na ordem configurada. Normalmente o Herdr separa valores vizinhos com ` · ` e usa um único espaço depois de `state_icon`. Valores ausentes e os separadores deles somem. Uma linha some quando nenhum dos tokens dela tem valor. Linhas personalizadas existentes não mudam, então adicione `machine` de forma explícita se quiser a identidade da máquina em um layout personalizado com várias máquinas. Cada layout pode ter no máximo 16 linhas, com no máximo 16 tokens em cada linha.
+Os tokens aparecem na ordem configurada. Normalmente o Herdr separa valores vizinhos com ` · ` e usa um único espaço depois de `state_icon`. Valores ausentes e os separadores deles somem. Uma linha some quando nenhum dos tokens dela tem valor. Linhas personalizadas existentes não mudam, então adicione `machine` explicitamente se quiser a identidade da máquina em um layout personalizado com várias máquinas. Cada layout pode ter no máximo 16 linhas, com no máximo 16 tokens em cada linha.
 
 Uma entrada de token também pode ser uma tabela inline de estilo:
 
@@ -404,9 +404,9 @@ rows = [
 ]
 ```
 
-`fg` aceita estritamente `#RGB` ou `#RRGGBB`. `bold` e `dim` aceitam booleanos. Campos omitidos preservam o estilo contextual do token. Um `false` explícito remove aquele modificador. O estilo vale para uma ocorrência, então o mesmo token pode ter outra aparência em outra linha ou em outra substituição por agente. Uma substituição de cor de frente troca todas as cores semânticas de frente dentro daquela ocorrência. Por exemplo, as contagens de à frente e atrás de um `git_status` estilizado usam uma cor só, em vez do verde e do vermelho padrão. Os estilos de token nunca mudam separadores nem fundos de linha.
+`fg` aceita estritamente `#RGB` ou `#RRGGBB`. `bold` e `dim` aceitam booleanos. Campos omitidos preservam o estilo contextual do token. Um `false` explícito remove aquele modificador. O estilo vale para uma ocorrência, então o mesmo token pode ter outra aparência em outra linha ou em outra substituição por agente. Uma substituição da cor de primeiro plano troca todas as cores semânticas de primeiro plano dentro daquela ocorrência. Por exemplo, as contagens à frente e atrás de um `git_status` estilizado usam uma cor só, em vez do verde e do vermelho padrão. Os estilos de token nunca mudam separadores nem fundos de linha.
 
-Tokens com valor de texto também aceitam até 16 `rules` em ordem. Cada regra contém exatamente uma condição (`equals`, `contains`, `starts_with`, `gt` ou `lt`) e substituições opcionais de `fg`, `bold` e `dim`:
+Tokens com valor de texto também aceitam até 16 `rules` em ordem. Cada regra contém exatamente uma condição, que pode ser `equals`, `contains`, `starts_with`, `gt` ou `lt`. A regra também aceita substituições opcionais de `fg`, `bold` e `dim`:
 
 ```toml
 [ui.sidebar.agents]
@@ -423,7 +423,7 @@ A primeira regra que casa vence. Os campos de estilo que ela especifica substitu
 
 `gt` e `lt` recebem limites numéricos finitos e comparam com maior ou menor estrito, sem igualdade. Os valores precisam ser lidos por inteiro como números finitos. Formas decimais e com expoente funcionam, mas espaços em branco, unidades, `NaN` e infinito não casam. Regras numéricas não aceitam `ignore_case`. As comparações usam números de ponto flutuante, não aritmética exata de inteiros grandes.
 
-As regras funcionam com os tokens embutidos de texto e com os tokens personalizados `$name` nas linhas de Agent, nas substituições de `rows_by_agent` e nas linhas de Space. Tokens personalizados comparam o valor informado. No exemplo acima, `$load` informando `"90"` seleciona vermelho e negrito, `"60"` seleciona amarelo e `"90%"` mantém o branco. Tokens não informados continuam sumindo. `state_icon` e o composto `git_status` aceitam só estilos fixos, não regras. O Herdr rejeita condições desconhecidas e regras malformadas ao carregar a configuração. Regex, busca aproximada e scripts não são suportados.
+As regras funcionam com os tokens embutidos de texto e com os tokens personalizados `$name` nas linhas de Agent, nas substituições de `rows_by_agent` e nas linhas de Space. Tokens personalizados comparam o valor informado. No exemplo acima, `$load` informando `"90"` seleciona vermelho e negrito, `"60"` seleciona amarelo e `"90%"` mantém o branco. Tokens não informados continuam sumindo. `state_icon` e o composto `git_status` aceitam só estilos fixos, não regras. O Herdr rejeita condições desconhecidas e regras malformadas ao carregar a configuração. As regras não aceitam regex, busca aproximada nem scripts.
 
 `row_gap` controla as linhas em branco do terminal entre as entradas, de forma independente para os painéis Agent e Space. O padrão é `0`, que junta as entradas. Defina `1` para voltar ao espaçamento anterior. Ele não adiciona espaço entre as linhas de conteúdo declaradas em `rows`. Filhos de worktree indentados e consecutivos continuam juntos como um grupo de Space.
 
@@ -444,7 +444,7 @@ claude = [
 ]
 ```
 
-Uma substituição troca `rows` inteiro, não estende. As chaves de substituição são IDs canônicos de agente, com diferença entre maiúsculas e minúsculas, como `claude`, `codex` e `pi`. Aliases de detecção como `claude-code` não são aceitos. Agentes sem substituição, inclusive agentes personalizados informados, usam `rows`.
+Uma substituição troca `rows` inteiro em vez de estender. As chaves de substituição são IDs canônicos de agente, com diferença entre maiúsculas e minúsculas, como `claude`, `codex` e `pi`. O Herdr não aceita aliases de detecção como `claude-code`. Agentes sem substituição, inclusive agentes personalizados informados, usam `rows`.
 
 Tokens personalizados `$name` são valores dinâmicos, não texto literal. Adicione o token a um layout e depois informe o valor dele a partir de um script ou plugin:
 
@@ -485,7 +485,7 @@ position = "bottom-right"
 
 Escolha `herdr` para um toast dentro do app, `terminal` para uma notificação do terminal externo que também funciona por SSH, `system` para o serviço de notificações do sistema operacional local ou `off` para desativar os popups. O Herdr não mostra popups da aba ativa. Procure `ui.toast` na [Referência de configuração](/pt-br/docs/config-reference/) para posições, comportamento do atraso e configurações de retorno da área de transferência.
 
-No macOS, `system` tenta primeiro o `terminal-notifier` e recorre ao `/usr/bin/osascript` quando ele não está disponível ou falha. Com esse recurso, a notificação aparece como Script Editor na Central de Notificações e não consegue ativar o terminal hospedeiro. Instale o `terminal-notifier` com `brew install terminal-notifier`. Em um terminal suportado e detectado, ele consegue ativar o app do terminal quando você clica na notificação. Outra opção é escolher `terminal` para deixar a notificação com um terminal externo suportado.
+No macOS, `system` tenta primeiro o `terminal-notifier` e recorre ao `/usr/bin/osascript` quando ele não está disponível ou falha. Com esse fallback, a notificação aparece como Script Editor na Central de Notificações e não consegue ativar o terminal hospedeiro. Instale o `terminal-notifier` com `brew install terminal-notifier`. Em um terminal detectado e com suporte, ele consegue ativar o app do terminal quando você clica na notificação. Outra opção é escolher `terminal` para deixar a notificação com um terminal externo com suporte.
 
 ## Som
 
@@ -518,7 +518,7 @@ Aplicações e plugins se integram pelo protocolo padrão de gráficos do Kitty,
 
 Popups, menus e notificações escondem temporariamente só as imagens que eles cobrem. Imagens descobertas continuam visíveis, e as escondidas voltam quando deixam de estar cobertas. As imagens não escurecem junto com o fundo dos diálogos.
 
-O Herdr escolhe sozinho os transportes por arquivo elegíveis, sem mudanças na aplicação nem variáveis de ambiente. Em clientes Ghostty locais no Unix, ele pode enviar os dados das imagens por arquivos temporários em vez de codificá-los na saída do terminal. Antes, um pequeno teste de leitura de arquivo confere o suporte. Outros terminais, clientes iniciados por SSH e multiplexadores aninhados mantêm a saída inline nesse último trecho.
+O Herdr escolhe sozinho os transportes por arquivo elegíveis, sem mudanças na aplicação nem variáveis de ambiente. Em clientes Ghostty locais no Unix, ele pode enviar os dados das imagens por arquivos temporários em vez de codificá-los na saída do terminal. Antes, um pequeno teste de leitura de arquivo confere o suporte. Outros terminais, clientes iniciados por SSH e multiplexadores aninhados mantêm a saída inline no último trecho e ficam sem essa otimização.
 
 Em clientes locais elegíveis, as imagens RGBA nativas vão do servidor ao cliente como caminhos de snapshots do Herdr, não como bytes de pixel. Clientes sem suporte e transferências que falham voltam para a entrega inline. O Herdr nunca repassa caminhos do servidor remoto ao terminal local. O posicionamento, o recorte e a visibilidade das imagens ficam sob controle do Herdr.
 
@@ -539,7 +539,7 @@ Mudar essa configuração exige reiniciar o servidor do Herdr afetado ou reanexa
 
 ## Restauração da sessão dos agentes
 
-Por padrão, o Herdr retoma as conversas de agentes suportados depois de um reinício do servidor:
+Por padrão, o Herdr retoma as conversas de agentes com suporte depois de um reinício do servidor:
 
 ```toml
 [session]
@@ -549,7 +549,7 @@ startup_per_agent_delay_ms = 100
 
 As restaurações automáticas iniciam um agente por vez, com 100 milissegundos de intervalo por padrão, para reduzir a disputa na inicialização. O primeiro agente elegível começa na hora. Defina `startup_per_agent_delay_ms = 0` para tirar o intervalo. Execuções manuais e anexações explícitas de terminal não mudam. Reinicie o servidor do Herdr para aplicar as mudanças.
 
-Só painéis com uma referência válida de sessão nativa, vinda de uma integração oficial, podem ser retomados. Os outros painéis voltam como shells normais. Veja [Estado e restauração da sessão](/pt-br/docs/session-state/) para os agentes suportados e o comportamento da persistência.
+Só painéis com uma referência válida de sessão nativa, vinda de uma integração oficial, podem ser retomados. Os outros painéis voltam como shells normais. Veja [Estado e restauração da sessão](/pt-br/docs/session-state/) para os agentes com suporte e o comportamento da persistência.
 
 ## Rastreamento do cursor do IME
 
@@ -591,7 +591,7 @@ No Windows, o suporte hoje se limita ao IME coreano. Com um IME de qualquer outr
 
 ## Logs
 
-Os logs ajudam a diagnosticar avisos de inicialização, o estado das integrações ou o comportamento da API do socket.
+Os logs ajudam a diagnosticar avisos de inicialização, o estado das integrações ou o comportamento da API de socket.
 
 Arquivos de log comuns:
 

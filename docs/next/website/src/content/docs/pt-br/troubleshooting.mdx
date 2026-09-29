@@ -37,11 +37,11 @@ Atualize o terminal externo para uma versão que contenha a correção upstream:
 | foot | 1.20.0 |
 | Alacritty | 0.15.0 |
 
-Isso acontece principalmente com pacotes de terminal antigos de distribuições Linux de suporte de longo prazo. Veja a [issue #1116 do Herdr](https://github.com/herdrdev/herdr/issues/1116) para as capturas que confirmam o limite e as referências upstream. Se o problema continuar em uma versão atual do terminal, reporte a versão exata do terminal e se o problema também acontece fora do Herdr.
+O problema é especialmente comum com pacotes de terminal antigos de distribuições Linux com suporte de longo prazo. Veja a [issue #1116 do Herdr](https://github.com/herdrdev/herdr/issues/1116) para as capturas que confirmam o limite e as referências upstream. Se o problema continuar em uma versão atual do terminal, informe a versão exata do terminal e diga se o problema também acontece fora do Herdr.
 
 ## Option+Left ou Option+Right insere `;3D` ou `;3C`
 
-Os terminais costumam enviar Alt+Left e Alt+Right como as sequências padrão de seta com modificador `ESC[1;3D` e `ESC[1;3C`. No macOS, o terminal externo precisa antes estar configurado para tratar Option como Alt. Se o shell não associar essas sequências, o zsh pode mostrar os caracteres que sobram como `;3D` ou `;3C`. Isso pode acontecer com o kitty, o Alacritty e outros terminais. O Herdr e o tmux preservam a entrada original da seta com modificador.
+Os terminais costumam enviar Alt+Left e Alt+Right como as sequências padrão de seta com modificador `ESC[1;3D` e `ESC[1;3C`. No macOS, primeiro configure o terminal externo para tratar Option como Alt. Se o shell não associar essas sequências, o zsh pode mostrar os caracteres que sobram como `;3D` ou `;3C`. Isso pode acontecer com o kitty, o Alacritty e outros terminais. O Herdr e o tmux preservam a entrada original da seta com modificador.
 
 Adicione associações explícitas no zsh se quiser que as setas com modificador naveguem por palavras em todos os terminais e shells aninhados:
 
@@ -50,14 +50,14 @@ bindkey $'\e[1;3D' backward-word
 bindkey $'\e[1;3C' forward-word
 ```
 
-O kitty pode parecer funcionar de outro jeito fora do Herdr porque a integração automática dele com o zsh adiciona essas associações só aos shells que o próprio kitty inicia, não aos shells criados por multiplexadores de terminal. Siga as [instruções de integração manual com o shell](https://sw.kovidgoyal.net/kitty/shell-integration/#manual-shell-integration) do kitty, ou mapeie as teclas no `kitty.conf` antes que elas cheguem ao shell:
+O kitty pode parecer funcionar de outro jeito fora do Herdr porque a integração automática dele com o zsh adiciona essas associações só aos shells que o próprio kitty inicia, não aos shells que os multiplexadores de terminal criam. Siga as [instruções de integração manual com o shell](https://sw.kovidgoyal.net/kitty/shell-integration/#manual-shell-integration) do kitty, ou mapeie as teclas no `kitty.conf` antes que elas cheguem ao shell:
 
 ```text
 map alt+left send_text all \x1bb
 map alt+right send_text all \x1bf
 ```
 
-O Herdr não reescreve as setas com modificador de propósito, porque aplicações de terminal podem usar Alt+Left e Alt+Right diretamente. Veja a [issue #1370 do Herdr](https://github.com/herdrdev/herdr/issues/1370) para a investigação.
+Por decisão de projeto, o Herdr não reescreve as setas com modificador, porque aplicações de terminal podem usar Alt+Left e Alt+Right diretamente. Veja a [issue #1370 do Herdr](https://github.com/herdrdev/herdr/issues/1370) para a investigação.
 
 ## O Herdr foi atualizado, mas a sessão em execução continua antiga
 
@@ -68,7 +68,7 @@ herdr server stop
 herdr
 ```
 
-Encerrar um servidor encerra os processos dos painéis dele. Sessões nomeadas usam `herdr session stop <name>`. Veja [Instalar o Herdr](/pt-br/docs/install/#atualizar) para o comportamento do atualizador, dos gerenciadores de pacotes e do handoff ao vivo.
+Encerrar um servidor encerra os processos dos painéis dele. Para sessões nomeadas, use `herdr session stop <name>`. Veja [Instalar o Herdr](/pt-br/docs/install/#atualizar) para o comportamento do atualizador, dos gerenciadores de pacotes e do handoff ao vivo.
 
 ## Ferramentas que dependem do Keychain falham dentro do Herdr no macOS
 
@@ -89,9 +89,9 @@ Encerrar o servidor encerra os processos dos painéis dele. Os painéis do Herdr
 
 ## SSH ou DNS falha depois do logout no macOS
 
-Os servidores do macOS iniciados automaticamente usam um contexto de serviço por usuário, para que o logout não deixe os painéis deles com uma conexão morta com os serviços do macOS. Servidores iniciados com `herdr server` explícito mantêm o contexto de quem os chamou.
+Os servidores do macOS iniciados automaticamente usam um contexto de serviço por usuário, para que o logout não deixe os painéis deles com uma conexão morta com os serviços do macOS. Servidores iniciados explicitamente com `herdr server` mantêm o contexto de quem os iniciou.
 
-Um servidor mais antigo pode sobreviver ao logout e perder a consulta de usuários e o DNS. Os sintomas incluem `No user exists for uid 501`, `Could not get manager name.` e `curl: (6) Could not resolve host`. Fazer login de novo não conserta esse servidor. Encerre a sessão afetada e inicie o Herdr a partir de um terminal gráfico no novo login. Isso encerra os processos ativos dos painéis, mas restaura o layout salvo da sessão. O handoff ao vivo preserva o contexto de serviço do servidor de origem e os processos de painel que já existem. Por isso os servidores mais antigos precisam de um reinício completo da sessão para adotar essa correção. O handoff não consegue consertar o contexto herdado deles.
+Um servidor mais antigo pode sobreviver ao logout e perder a consulta de usuários e o DNS. Os sintomas incluem `No user exists for uid 501`, `Could not get manager name.` e `curl: (6) Could not resolve host`. Fazer login de novo não conserta esse servidor. Encerre a sessão afetada e inicie o Herdr a partir de um terminal gráfico no novo login. Isso encerra os processos ativos dos painéis, mas restaura o layout salvo da sessão. O handoff ao vivo preserva o contexto de serviço do servidor de origem e os processos de painel que já existem. Por isso, os servidores mais antigos precisam de um reinício completo da sessão para adotar essa correção. O handoff não consegue consertar o contexto herdado deles.
 
 Se um servidor recém-iniciado continuar com esse problema, procure `could not select persistent user service context` no `herdr-server.log`. O Herdr mantém o contexto herdado se as APIs necessárias do macOS não estiverem disponíveis. Veja a [issue #4100 do Herdr](https://github.com/herdrdev/herdr/issues/4100).
 

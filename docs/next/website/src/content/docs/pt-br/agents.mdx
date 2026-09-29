@@ -7,8 +7,7 @@ O Herdr foi feito para rodar mais de um agente de programação ao mesmo tempo. 
 
 Para coordenar agentes a partir de scripts ou de outro agente, veja [Automação de agentes](/pt-br/docs/agent-automation/).
 
-## Agentes suportados
-
+## Agentes com suporte
 A detecção automática funciona sem configuração para os agentes de programação mais comuns. A tabela mostra qual sinal determina `idle`, `working` e `blocked` em cada um.
 
 | Agente | Autoridade de estado | Papel da integração |
@@ -36,7 +35,7 @@ A detecção automática funciona sem configuração para os agentes de programa
 | Maki | manifest de tela | nenhum |
 | Muse | manifest de tela | nenhum |
 
-Detectados, mas com menos testes: Gemini CLI e Cline. Agentes não suportados continuam rodando normalmente como processos de terminal. Eles só podem ficar sem estado detalhado, a menos que você adicione uma integração ou informe o estado pela API do socket.
+Detectados, mas com menos testes: Gemini CLI e Cline. Agentes sem suporte continuam rodando normalmente como processos de terminal. Eles só podem ficar sem estado detalhado, a menos que você adicione uma integração ou informe o estado pela API de socket.
 
 ## Autoridade de status
 
@@ -44,17 +43,17 @@ Primeiro, o Herdr detecta o processo em primeiro plano de cada painel. Depois di
 
 Em agentes com hooks de ciclo de vida completos, a integração é a autoridade quando está instalada e informando ativamente o estado do painel em execução. O Herdr usa esses informes dos hooks para `idle`, `working`, `blocked` e para a identidade da sessão. Ele não roda também o fallback do manifest de tela para essa mesma autoridade de ciclo de vida. Assim não existem duas fontes de verdade concorrentes.
 
-Em agentes sem hooks de ciclo de vida completos, o Herdr identifica o processo em primeiro plano e lê o snapshot da tela ao vivo na parte inferior do buffer. Ele avalia manifests TOML contra esse snapshot para classificar `idle`, `working` e `blocked`. Nos agentes que emitem essas sequências, os manifests também podem usar o título do terminal e as sequências de progresso (OSC) como evidência de detecção. Quando essa evidência não existe, as regras de tela fazem a detecção sozinhas.
+Em agentes sem hooks de ciclo de vida completos, o Herdr identifica o processo em primeiro plano e lê o snapshot da tela ao vivo na parte inferior do buffer. Ele compara esse snapshot com manifests TOML para classificar `idle`, `working` e `blocked`. Nos agentes que emitem essas sequências, os manifests também podem usar o título do terminal e as sequências de progresso (OSC) como evidência de detecção. Quando essa evidência não existe, as regras de tela fazem a detecção sozinhas.
 
 O snapshot da tela vem da parte inferior recente do buffer do painel, não da área visível rolada. Se você rolar para cima no Herdr, a detecção continua seguindo a interface ao vivo do agente, lá embaixo.
 
-As integrações cujo papel na tabela acima é só `session` (sessão) não são autoridades de ciclo de vida, de propósito. Elas fornecem a identidade nativa da sessão para a restauração, mas os hooks delas não cobrem o ciclo de vida inteiro. Eles podem perder resultados de aprovação de permissão, interrupções com Esc ou outras transições. Nesses agentes, o Herdr continua usando a detecção pelo manifest de tela.
+As integrações marcadas só com "sessão" na tabela acima não são autoridades de ciclo de vida, e isso é intencional. Elas fornecem a identidade nativa da sessão para a restauração, mas os hooks delas não cobrem o ciclo de vida inteiro. Eles podem perder resultados de aprovação de permissão, interrupções com Esc ou outras transições. Nesses agentes, o Herdr continua usando a detecção pelo manifest de tela.
 
 ## VMs e wrappers de sandbox
 
-No Linux e no macOS, um wrapper visível no host pode esconder do Herdr o processo real do agente. Defina `HERDR_AGENT=<agent>` no comando do wrapper para dizer ao Herdr qual manifest de tela de agente existente usar. Por exemplo, execute `HERDR_AGENT=claude fence -- claude` no Linux ou `HERDR_AGENT=claude nono run --profile claude-code -- claude` no macOS. A dica vale só para esse processo em primeiro plano. O Herdr não a enxerga se você defini-la só dentro de uma VM ou de um container. Evite exportá-la globalmente, a menos que todo processo em primeiro plano que a herdar deva ser tratado como esse agente.
+No Linux e no macOS, um wrapper visível no host pode esconder do Herdr o processo real do agente. Defina `HERDR_AGENT=<agent>` no comando do wrapper para indicar ao Herdr qual manifest de tela de um agente existente ele deve usar. Por exemplo, execute `HERDR_AGENT=claude fence -- claude` no Linux ou `HERDR_AGENT=claude nono run --profile claude-code -- claude` no macOS. A dica vale só para esse processo em primeiro plano. O Herdr não a enxerga se você defini-la só dentro de uma VM ou de um container. Evite exportá-la globalmente, a menos que todo processo em primeiro plano que a herdar deva ser tratado como esse agente.
 
-Alguns runtimes Linux restritos não expõem um grupo de processos em primeiro plano do terminal. Inicie o servidor do Herdr com `HERDR_PROCESS_DETECTION=child-groups` para ativar a inferência direta pelos grupos de processos filhos quando a detecção nativa não estiver disponível. A detecção nativa continua sendo a preferida, e o modo padrão `native` nunca faz essa inferência. O modo opcional funciona na base do melhor esforço. Um job em segundo plano mais novo pode ser confundido com o job em primeiro plano. O servidor lê a variável e precisa ser reiniciado. Defina-a no ambiente do servidor remoto, não em um cliente que está se anexando (attach).
+Alguns runtimes Linux restritos não expõem um grupo de processos em primeiro plano do terminal. Inicie o servidor do Herdr com `HERDR_PROCESS_DETECTION=child-groups` para ativar a inferência direta pelos grupos de processos filhos quando a detecção nativa não estiver disponível. A detecção nativa continua sendo a preferida, e o modo padrão `native` nunca faz essa inferência. O modo opcional é de melhor esforço. O Herdr pode confundir um job em segundo plano mais novo com o job em primeiro plano. Quem lê a variável é o servidor, então a mudança exige reiniciá-lo. Defina-a no ambiente do servidor remoto, não em um cliente que se anexa (attach).
 
 ## Estado bloqueado
 
@@ -62,7 +61,7 @@ A detecção de bloqueio é rígida de propósito para agentes com manifest de t
 
 Nesses outros agentes, prompts novos e incomuns podem aparecer primeiro como `idle` em vez de `blocked`, até o Herdr aprender esse formato de tela. A classificação errada afeta só o status visível e as esperas. Ela não deve fazer o Herdr enviar entrada nem executar ações destrutivas.
 
-No Codex, um spinner visível ou um cronômetro de atividade ao vivo pode estabelecer `working`, e um prompt de aprovação visível pode estabelecer `blocked`. Um título comum, o compositor ou a falta de spinner não conseguem estabelecer que um turno terminou. Por isso, o Codex pode ficar em `unknown` depois de uma resposta, e esperas por `idle` ou por conclusão podem estourar o tempo limite. A inicialização gerenciada usa o compositor inicial só para saber quando ele pode aceitar um prompt. Essa observação não muda o status do turno.
+No Codex, um spinner visível ou um cronômetro de atividade ao vivo basta para marcar `working`, e um prompt de aprovação visível basta para marcar `blocked`. Um título comum, o compositor ou a falta de spinner não bastam para concluir que um turno terminou. Por isso, o Codex pode ficar em `unknown` depois de uma resposta, e esperas por `idle` ou por conclusão podem estourar o tempo limite. A inicialização gerenciada usa o compositor inicial só para saber quando o Codex pode aceitar um prompt. Essa observação não muda o status do turno.
 
 ## Manifests de detecção
 
@@ -74,11 +73,11 @@ Overrides locais no diretório de configuração da plataforma podem substituir 
 ~/.config/herdr/agent-detection/<agent>.toml
 ```
 
-Os overrides locais sempre vencem. Sem um override local, o Herdr usa o manifest compatível mais novo entre o manifest remoto em cache e o manifest embutido no binário em execução. Em builds de debug, o mesmo helper de configuração pode usar um diretório de desenvolvimento como `herdr-dev`. O Herdr ignora arquivos de override inválidos com um aviso e volta para o manifest remoto em cache ou para o embutido desse agente.
+Os overrides locais sempre vencem. Sem um override local, o Herdr usa o manifest compatível mais novo entre o manifest remoto em cache e o manifest embutido no binário em execução. Em builds de debug, o mesmo helper de configuração pode usar um diretório de desenvolvimento como `herdr-dev`. O Herdr ignora arquivos de override inválidos, emite um aviso e volta para o manifest remoto em cache ou para o embutido desse agente.
 
 Os manifests remotos corrigem regras de detecção de agentes que o Herdr já sabe identificar. Adicionar um agente totalmente novo ainda exige uma atualização do binário do Herdr para a detecção de processo, os rótulos e o comportamento da integração.
 
-O servidor em execução carrega os manifests ativos na memória ao iniciar. As atualizações automáticas de manifest remoto recarregam esse cache em memória depois que as novas regras são gravadas. Execute `herdr server update-agent-manifests` para buscar as atualizações de manifest remoto na hora e recarregar o servidor em execução. Depois de editar um override local à mão, reinicie o Herdr ou execute `herdr server reload-agent-manifests` para aplicar o arquivo ao servidor em execução.
+O servidor em execução carrega os manifests ativos na memória ao iniciar. As atualizações automáticas de manifest remoto recarregam esse cache em memória depois de gravar as novas regras. Execute `herdr server update-agent-manifests` para buscar as atualizações de manifest remoto na hora e recarregar o servidor em execução. Depois de editar um override local à mão, reinicie o Herdr ou execute `herdr server reload-agent-manifests` para aplicar o arquivo ao servidor em execução.
 
 Use `herdr agent explain` quando um painel mostrar o estado errado:
 
@@ -87,11 +86,11 @@ herdr agent explain <target>
 herdr agent explain --file screen.txt --agent codex --json
 ```
 
-O servidor em execução avalia o explain ao vivo, então o resultado reflete o cache de manifests ativo. A saída do explain mostra o agente, o estado final, se uma autoridade de ciclo de vida completa pulou a detecção de tela, a origem e a versão do manifest, a versão remota em cache, o sombreamento por override local, o status da atualização remota, a regra que correspondeu, as flags de evidência visível, a evidência de matcher e região das regras avaliadas, o motivo de atualização pulada em visualizadores de transcrição e o motivo do fallback para ocioso quando nenhuma regra correspondeu.
+O servidor em execução avalia o explain ao vivo, então o resultado reflete o cache de manifests ativo. A saída do explain mostra o agente, o estado final, se uma autoridade de ciclo de vida completa pulou a detecção de tela, a origem e a versão do manifest, a versão remota em cache, a sobreposição por override local, o status da atualização remota, a regra que correspondeu, as flags de evidência visível, a evidência de matcher e região das regras avaliadas, o motivo de atualização pulada em visualizadores de transcrição e o motivo do fallback para ocioso quando nenhuma regra correspondeu.
 
 O Herdr pode rodar dentro do tmux como ambiente de terminal externo. A detecção de agentes não inspeciona sessões do tmux abertas dentro de um painel do Herdr. Se um framework de shell entrar no tmux automaticamente dentro do Herdr, o Herdr vê `tmux` como o processo do painel em vez do agente por trás dele.
 
-Se o seu shell se anexa ao tmux automaticamente sempre que `TMUX` não está definida, atualize essa regra de inicialização para excluir os painéis do Herdr. Reanexar a sessão externa do tmux de dentro de um painel do Herdr pode encolher o terminal recursivamente e fazê-lo piscar. Adicione a checagem de `HERDR_ENV` à condição existente antes de ela rodar o tmux:
+Se o seu shell se anexa ao tmux automaticamente sempre que `TMUX` não está definida, atualize essa regra de inicialização para excluir os painéis do Herdr. Reanexar a sessão externa do tmux de dentro de um painel do Herdr pode encolher o terminal recursivamente e fazê-lo piscar. Adicione a checagem de `HERDR_ENV` à condição que você já usa antes de rodar o tmux:
 
 ```zsh
 if [[ -z ${TMUX:-} && ${HERDR_ENV:-} != 1 ]]; then
@@ -103,7 +102,7 @@ fi
 
 A barra lateral agrega o estado para cima.
 
-Um agente bloqueado faz o painel, a aba e o workspace dele aparecerem como bloqueados. Um agente trabalhando faz o workspace aparecer como ativo. Um agente concluído continua visível até você visualizá-lo.
+Um agente bloqueado faz o painel, a aba e o workspace dele aparecerem como bloqueados. Um agente trabalhando faz o workspace aparecer como ativo. Um agente concluído continua visível até você vê-lo.
 
 Esse é o fluxo principal do Herdr: inicie vários agentes, deixe-os trabalhar em paralelo e use a barra lateral para ver qual projeto precisa de uma decisão, qual ainda está rodando e qual está pronto para revisão.
 
@@ -116,7 +115,7 @@ herdr integration install claude
 herdr integration status
 ```
 
-Cada agente suportado tem o próprio nome de integração e comportamento. Veja [Integrações](/pt-br/docs/integrations/) para os detalhes por agente e a lista completa de instalação. Se você está construindo um agente, [Adicionar suporte ao Herdr no seu agente](/pt-br/docs/add-herdr-support/) mostra como informar o estado do ciclo de vida e um comando de retomada sem adicionar suporte nativo ao Herdr.
+Cada agente com suporte tem o próprio nome de integração e comportamento. Veja [Integrações](/pt-br/docs/integrations/) para os detalhes por agente e a lista completa de instalação. Se você está desenvolvendo um agente, [Adicionar suporte ao Herdr no seu agente](/pt-br/docs/add-herdr-support/) mostra como informar o estado do ciclo de vida e um comando de retomada sem adicionar suporte nativo ao Herdr.
 
 ## Rótulos personalizados de agente
 
@@ -127,7 +126,7 @@ herdr agent rename w1:p1 reviewer
 herdr agent rename reviewer --clear
 ```
 
-Os alvos aceitam um nome único de agente ativo ou o ID do painel que hospeda o agente no momento. IDs de terminal e rótulos só com o tipo do agente não são aceitos.
+Os alvos aceitam um nome único de agente ativo ou o ID do painel que hospeda o agente no momento. Eles não aceitam IDs de terminal nem rótulos só com o tipo do agente.
 
 ## Rótulos personalizados de status
 
@@ -144,9 +143,9 @@ herdr pane report-metadata w1:p1 \
   --token summary=indexing
 ```
 
-`state` controla esperas, notificações e agregações. O token `summary` serve só para exibição e pode ser usado como `$summary` em uma linha de agente da barra lateral.
+`state` controla esperas, notificações e a agregação de estado. O token `summary` serve só para exibição, e você pode usá-lo como `$summary` em uma linha de agente da barra lateral.
 
-As linhas de agente da barra lateral também podem usar `terminal_title` ou `terminal_title_stripped`. Nenhum dos dois aparece nas linhas padrão. O primeiro mostra o título de terminal OSC 0/2 mais recente, normalizado por segurança. O segundo remove um glifo inicial reconhecido de atividade ou spinner e o espaço em branco que o segue. O Herdr mantém esses valores no servidor. Eles se perdem em um reinício a frio e são independentes dos títulos de metadados e do estado semântico do agente. Por isso, a animação do spinner pode atualizar o título bruto sem gerar uma atualização do painel quando o texto sem o glifo continua igual.
+As linhas de agente da barra lateral também podem incluir `terminal_title` ou `terminal_title_stripped`. Nenhum dos dois aparece nas linhas padrão. O primeiro mostra o título de terminal OSC 0/2 mais recente, normalizado por segurança. O segundo remove um glifo inicial reconhecido de atividade ou spinner e o espaço em branco que o segue. O Herdr mantém esses valores no servidor. Eles se perdem em um reinício a frio e são independentes dos títulos de metadados e do estado semântico do agente. Por isso, a animação do spinner pode atualizar o título bruto sem gerar uma atualização do painel quando o texto sem o glifo continua igual.
 
 ## Anexar direto a um agente
 
@@ -158,7 +157,7 @@ herdr agent attach reviewer
 
 Desanexe (detach) com `ctrl+b q`. Envie um `ctrl+b` literal com `ctrl+b ctrl+b`.
 
-Role com a roda do mouse ou com page up/page down simples. Qualquer entrada normal volta para o fim.
+Role com a roda do mouse ou com page up/page down simples. Qualquer entrada normal leva a tela de volta ao fim.
 
 Use `--takeover` se outro cliente anexado direto já controla a entrada:
 

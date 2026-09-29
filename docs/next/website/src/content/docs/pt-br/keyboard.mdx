@@ -62,7 +62,7 @@ Workspaces e sessão:
 
 O mapa de teclas completo e a sintaxe dos atalhos estão na [referência de atalhos de teclado](/pt-br/docs/configuration/#atalhos-de-teclado).
 
-O seletor Goto (`prefix+g`) lista cada agente ou terminal em uma linha própria, agrupados por workspace. Abas divididas nunca escondem os painéis atrás de outra linha. Clique em uma linha ou pressione Enter para ir direto a ela. Pressione `/` para buscar por nomes, tipos de agente, abas, workspaces, branches ou caminhos. Quando não estiver digitando uma busca, use Up/Down ou `j/k` para mover entre as linhas. Left/Right vai para o primeiro agente ou terminal da seção de workspace anterior ou seguinte, sem dar a volta. Enquanto você edita uma busca, Left/Right move o cursor de texto. Fora da busca, `b/w/i/d` filtram agentes bloqueados, trabalhando, ociosos ou concluídos, e `a` volta a mostrar todos os terminais. A localização e o caminho do destino selecionado aparecem abaixo da lista. Quando a lista não cabe na tela, use a roda do mouse, clique no trilho da barra de rolagem ou arraste o marcador dela para rolar sem abrir um destino.
+O seletor Goto (`prefix+g`) lista cada agente ou terminal em uma linha própria, com as linhas agrupadas por workspace. Abas divididas nunca escondem os painéis atrás de outra linha. Clique em uma linha ou pressione Enter para ir direto a ela. Pressione `/` para buscar por nomes, tipos de agente, abas, workspaces, branches ou caminhos. Quando não estiver digitando uma busca, use Up/Down ou `j/k` para se mover entre as linhas. Left/Right vai para o primeiro agente ou terminal da seção de workspace anterior ou seguinte, sem dar a volta. Enquanto você edita uma busca, Left/Right move o cursor de texto. Fora da busca, `b/w/i/d` filtram agentes bloqueados, trabalhando, ociosos ou concluídos, e `a` volta a mostrar todos os terminais. A localização e o caminho do destino selecionado aparecem abaixo da lista. Quando a lista não cabe na tela, use a roda do mouse, clique no trilho da barra de rolagem ou arraste o marcador dela para rolar sem abrir um destino.
 
 ## Edição de campos de texto
 
@@ -80,7 +80,7 @@ Os diálogos de nome, os campos de branch de worktree, os filtros e a busca do m
 | Recortar a próxima palavra | Alt+D |
 | Inserir o último texto recortado | Ctrl+Y |
 
-A digitação e o colar inserem texto na posição do cursor. O movimento e a exclusão respeitam os limites de grafemas Unicode, e valores longos rolam na horizontal. O texto recortado fica dentro do campo atual e não usa a área de transferência do sistema. Os atalhos com Alt exigem que o terminal informe Alt/Meta. Enter e Esc mantêm o comportamento de confirmar e cancelar do diálogo.
+Digitar e colar inserem o texto na posição do cursor. Mover e apagar respeitam os limites de grafemas Unicode, e valores longos rolam na horizontal. O texto recortado fica dentro do campo atual e não usa a área de transferência do sistema. Os atalhos com Alt exigem que o terminal informe Alt/Meta. Enter e Esc mantêm o comportamento de confirmar e cancelar do diálogo.
 
 ## Modo de cópia
 
@@ -99,11 +99,11 @@ prefix = "ctrl+a"
 
 ## Sem prefixo
 
-Você pode associar ações do Herdr a combinações diretas que não precisam de prefixo. A parte difícil é saber quais combinações são seguras, porque terminais, shells e ambientes de desktop já ocupam a maior parte do teclado.
+Você pode associar ações do Herdr a combinações de teclas diretas, sem prefixo nenhum. A parte difícil é saber quais combinações são seguras, porque terminais, shells e ambientes de desktop já ocupam a maior parte do teclado.
 
-Qualquer combinação funciona como atalho: `ctrl+j`, `alt+k`, o que for mais confortável para você. Mas uma combinação precisa passar por três camadas antes de o Herdr recebê-la: o sistema operacional, o terminal externo (Ghostty, iTerm2 e outros vêm com os próprios padrões) e os programas que rodam dentro do painel. `ctrl+j` chega ao Herdr sem problema, mas shells e editores a tratam como Enter. `alt+k` está livre no Linux, mas no macOS a maioria dos terminais a compõe em um caractere especial. Se você escolher combinações dessas famílias, confira-as contra os atalhos do seu terminal e do seu sistema.
+Qualquer combinação funciona como atalho: `ctrl+j`, `alt+k`, o que for mais confortável para você. Mas uma combinação precisa passar por três camadas antes de o Herdr recebê-la: o sistema operacional, o terminal externo (Ghostty, iTerm2 e outros vêm com os próprios padrões) e os programas que rodam dentro do painel. `ctrl+j` chega ao Herdr sem problema, mas shells e editores a tratam como Enter. `alt+k` está livre no Linux, mas no macOS a maioria dos terminais a compõe em um caractere especial. Se você escolher combinações dessas famílias, confira se elas não conflitam com os atalhos do seu terminal e do seu sistema.
 
-O mapeamento dos atalhos padrão do Ghostty, iTerm2, Terminal.app, kitty, WezTerm, Alacritty, Warp, Windows Terminal, GNOME Terminal e Konsole, mais os atalhos globais do GNOME e do KDE, mostra uma família de modificadores quase intocada em todos eles: `ctrl+alt`. Os terminais a deixam livre, ela não sofre com a composição da tecla Option do macOS que bloqueia combinações só com `alt`, e ela é transmitida até em terminais sem um protocolo de teclado moderno. É um padrão seguro, mas a escolha é sua.
+Mapeamos os atalhos padrão do Ghostty, iTerm2, Terminal.app, kitty, WezTerm, Alacritty, Warp, Windows Terminal, GNOME Terminal e Konsole, além dos atalhos globais do GNOME e do KDE. Uma família de modificadores fica quase intocada em todos eles: `ctrl+alt`. Os terminais a deixam livre, e a composição da tecla Option do macOS, que bloqueia combinações só com `alt`, não a afeta. Ela também passa até por terminais sem um protocolo de teclado moderno. É um padrão seguro, mas a escolha é sua.
 
 Esta configuração mantém os atalhos com prefixo funcionando e acrescenta combinações diretas:
 
@@ -131,4 +131,4 @@ Algumas combinações com `ctrl+alt` já estão ocupadas em outros lugares. Evit
 | `ctrl+alt+s` / `ctrl+alt+u` | Konsole |
 | `ctrl+alt+f1..f12` | troca de console virtual do Linux |
 
-Se uma combinação direta não fizer nada, o terminal ou o ambiente de desktop a consumiu antes de o Herdr recebê-la. Mude o atalho de um dos lados: libere a combinação nas configurações do terminal ou escolha outra combinação no Herdr.
+Se uma combinação direta não fizer nada, o terminal ou o ambiente de desktop a consumiu antes de o Herdr recebê-la. Remapeie um dos lados: libere a combinação nas configurações do terminal ou escolha outra combinação no Herdr.

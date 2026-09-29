@@ -21,7 +21,7 @@ O Herdr é pensado para o mouse, então comece clicando em painéis, abas, works
 
 Ctrl-clique abre links do painel quando o seu terminal envia o clique com modificador para o Herdr. Isso funciona com hyperlinks OSC 8 e URLs `http://` ou `https://`, inclusive links quebrados em várias linhas cujo início ou fim está fora da área visível. Segure Ctrl e passe o ponteiro sobre um link para sublinhar os trechos visíveis dele. O destaque some quando você afasta o ponteiro, quando o conteúdo do painel muda ou quando o Herdr recebe um evento de soltar o Ctrl. Alguns terminais só informam mudanças de modificador junto com um movimento do mouse. No macOS, use Ctrl-clique para os links de painel que o Herdr trata enquanto a captura do mouse estiver ativa. Cmd-clique só funciona pelo caminho nativo do terminal que contorna o Herdr, como Shift-Cmd-clique ou `ui.mouse_capture = false`.
 
-Se você configurar `ui.right_click_passthrough_modifier`, esse modificador junto com o clique direito envia os gestos de clique direito, segurar e arrastar para os apps do painel que reportam o mouse. Para o clique direito normal ir para o app de um painel, escolha **Send right-clicks to pane** no menu desse painel ou execute `herdr pane input --current --right-click pane` dentro dele. Clique com o botão direito na moldura do painel para abrir de novo o menu do Herdr.
+Se você configurar `ui.right_click_passthrough_modifier`, esse modificador junto com o clique direito envia os gestos de clique direito, segurar e arrastar para os apps do painel que recebem eventos de mouse. Para o clique direito normal ir para o app de um painel, escolha **Send right-clicks to pane** no menu desse painel ou execute `herdr pane input --current --right-click pane` dentro dele. Clique com o botão direito na moldura do painel para abrir de novo o menu do Herdr.
 
 ## Executar um agente
 
@@ -31,7 +31,7 @@ Inicie o seu agente de programação em um painel:
 claude
 ```
 
-Ou `codex`, `pi`, `opencode` ou qualquer outro [agente suportado](/pt-br/docs/agents/). O Herdr detecta o agente automaticamente. Em todos os workspaces, a barra lateral mostra se cada agente está `working`, `blocked`, `done` ou `idle`, então você sempre sabe qual projeto precisa de você.
+Ou `codex`, `pi`, `opencode` ou qualquer outro [agente com suporte](/pt-br/docs/agents/). O Herdr detecta o agente automaticamente. Em todos os workspaces, a barra lateral mostra se cada agente está `working`, `blocked`, `done` ou `idle`, então você sempre sabe qual projeto precisa de você.
 
 ## Controle pelo teclado
 
@@ -65,5 +65,5 @@ herdr server stop
 
 - [Conceitos](/pt-br/docs/concepts/) explica o modelo de workspace, aba, painel e agente em dois minutos.
 - [Como trabalhar com o Herdr](/pt-br/docs/how-to-work/) mostra os fluxos de trabalho local, por SSH, pelo celular e com `herdr --remote`.
-- [Agentes](/pt-br/docs/agents/) cobre os agentes suportados, a detecção e as integrações que deixam o estado mais preciso.
+- [Agentes](/pt-br/docs/agents/) cobre os agentes com suporte, a detecção e as integrações que deixam o estado mais preciso.
 - [Configuração](/pt-br/docs/configuration/) cobre atalhos de teclado, temas, notificações e todo o resto.
