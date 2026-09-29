@@ -1,0 +1,54 @@
+---
+title: Marketplace
+description: Descubra plugins do Herdr feitos pela comunidade no GitHub e coloque o seu plugin na lista.
+---
+
+O marketplace de plugins do Herdr indexa plugins da comunidade. Navegue por ele em
+[herdr.dev/plugins](/plugins/). O índice cobre repositórios públicos do GitHub e
+não é um catálogo revisado.
+
+## Navegue pelos plugins
+
+O [marketplace](/plugins/) lista repositórios públicos marcados com o tópico
+`herdr-plugin` do GitHub quando a branch padrão deles contém pelo menos um
+`herdr-plugin.toml` cujos metadados obrigatórios o Herdr consegue interpretar. Busque pelos metadados do repositório
+ou do plugin e ordene os cards de repositório por popularidade, atividade recente
+ou pelos mais novos. Cada card leva ao repositório de origem e lista todos os plugins
+encontrados dentro dele.
+
+A descoberta é automática e não passa por revisão. Estar na lista significa que um repositório se marcou,
+não que o Herdr o avaliou. Por isso, siga as
+[orientações de confiança](/pt-br/docs/plugins/#confiança-e-segurança) antes de
+instalar qualquer coisa.
+
+## Instale um plugin
+
+O marketplace ajuda você a descobrir plugins. Instale qualquer plugin direto do
+GitHub:
+
+```bash
+herdr plugin install owner/repo[/subdir...]
+```
+
+O comando funciona com um repositório público do GitHub que tenha um manifest
+`herdr-plugin.toml` na raiz ou em um subdiretório. Veja
+[Plugins](/pt-br/docs/plugins/) para a referência do manifest e de criação de plugins.
+
+## Coloque o seu plugin na lista
+
+Adicione o tópico `herdr-plugin` do GitHub a um repositório público e coloque um ou mais
+manifests `herdr-plugin.toml` na branch padrão, com metadados obrigatórios
+que o Herdr consegue interpretar. Os manifests podem ficar na raiz ou em subdiretórios. O marketplace usa
+um card por repositório e lista cada manifest válido como um plugin que você instala
+separadamente. O índice se atualiza automaticamente a cada 30 minutos e
+varre de novo os repositórios quando o head da branch padrão deles muda.
+
+## O que a listagem mostra
+
+Cada card mostra metadados do repositório no GitHub: o nome e o dono do repositório, a
+descrição, o número de estrelas, a linguagem principal e a data do último push. As
+linhas de plugin mostram o `name` e a `version` de cada manifest e levam ao diretório
+exato do código-fonte. O índice registra o caminho do manifest, `id`, `name`, `version`,
+`platforms` e `min_herdr_version`, junto com o commit exato da branch padrão.
+O índice exclui forks, repositórios arquivados, repositórios sem um manifest de plugin
+válido e metadados de manifest malformados.

@@ -1,0 +1,21 @@
+---
+title: Referência de configuração
+description: Todas as chaves canônicas do config.toml, com tipos, padrões e valores permitidos.
+---
+
+import ConfigReference from '../../../components/ConfigReference.astro';
+
+Navegue por todas as chaves canônicas que o Herdr lê do `config.toml` em uma lista plana e filtrável. Para orientações de configuração
+e o motivo de cada opção, veja [Configuração](/pt-br/docs/configuration/).
+
+Imprima a configuração padrão completa, com comentários, quando quiser:
+
+```bash
+herdr --default-config
+```
+
+Os atalhos de comandos personalizados (`[[keys.command]]`) são tabelas definidas pelo usuário e não
+aparecem aqui chave por chave. Veja
+[Atalhos de comandos personalizados](/pt-br/docs/configuration/#atalhos-de-comandos-personalizados).
+
+<ConfigReference />

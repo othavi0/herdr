@@ -1,0 +1,134 @@
+---
+title: Teclado
+description: O que é o prefixo, quais atalhos aprender primeiro e como usar o Herdr sem prefixo.
+---
+
+:::tip[Vem do tmux ou do zellij?]
+Você já conhece esse modelo. Vá direto para a [referência de atalhos de teclado](/pt-br/docs/configuration/#atalhos-de-teclado) para ver o mapa de teclas padrão completo e a sintaxe de configuração.
+:::
+
+O Herdr é pensado para o mouse. Você pode clicar em painéis, abas, workspaces e agentes, arrastar as bordas das divisões e usar menus de clique direito sem aprender nenhum atalho de teclado. O controle pelo teclado é opcional.
+
+## O que é o prefixo
+
+Um multiplexador de terminal fica entre o seu terminal e os programas que rodam dentro dele. Esses programas já usam a maioria das combinações de teclas: `ctrl+c` interrompe, `ctrl+r` busca no histórico e os editores tomam quase todo o resto. Se o Herdr capturasse as teclas comuns direto, ele quebraria os programas que rodam dentro dele.
+
+O prefixo resolve isso. Pressione a tecla de prefixo, por padrão `ctrl+b`, e a próxima tecla vai para o Herdr em vez do terminal. `prefix+c` quer dizer: pressione `ctrl+b`, solte e depois pressione `c`. O Herdr reserva uma tecla em vez de dezenas.
+
+Pressione `prefix+?` a qualquer momento para ver todos os atalhos ativos. Pressione `/` na ajuda de atalhos para filtrar ações e atalhos. Use Backspace para editar o filtro ou `ctrl+u` para limpá-lo.
+
+## Aprenda estes cinco primeiro
+
+| Ação | Tecla |
+| --- | --- |
+| Nova aba | `prefix+c` |
+| Dividir à direita / abaixo | `prefix+v` / `prefix+minus` |
+| Mover entre painéis | `prefix+h/j/k/l` |
+| Navegação de workspaces | `prefix+w` |
+| Desanexar (detach) e deixar tudo rodando | `prefix+q` |
+
+Esses atalhos cobrem a maior parte da movimentação do dia a dia. Todo o resto pode ficar no mouse.
+
+## O resto, por tarefa
+
+Painéis:
+
+| Ação | Tecla |
+| --- | --- |
+| Dar zoom no painel em foco | `prefix+z` |
+| Fechar painel | `prefix+x` |
+| Trocar painéis de lugar | `prefix+shift+h/j/k/l` |
+| Modo de redimensionamento | `prefix+r` |
+| Modo de cópia | `prefix+[` |
+
+Abas:
+
+| Ação | Tecla |
+| --- | --- |
+| Próxima aba / aba anterior | `prefix+n` / `prefix+p` |
+| Ir para a aba 1 a 9 | `prefix+1..9` |
+| Renomear aba | `prefix+shift+t` |
+| Fechar aba | `prefix+shift+x` |
+
+Workspaces e sessão:
+
+| Ação | Tecla |
+| --- | --- |
+| Novo workspace | `prefix+shift+n` |
+| Renomear workspace | `prefix+shift+w` |
+| Fechar workspace | `prefix+shift+d` |
+| Seletor Goto | `prefix+g` |
+| Mostrar ou ocultar a barra lateral | `prefix+b` |
+
+O mapa de teclas completo e a sintaxe dos atalhos estão na [referência de atalhos de teclado](/pt-br/docs/configuration/#atalhos-de-teclado).
+
+O seletor Goto (`prefix+g`) lista cada agente ou terminal em uma linha própria, com as linhas agrupadas por workspace. Abas divididas nunca escondem os painéis atrás de outra linha. Clique em uma linha ou pressione Enter para ir direto a ela. Pressione `/` para buscar por nomes, tipos de agente, abas, workspaces, branches ou caminhos. Quando não estiver digitando uma busca, use Up/Down ou `j/k` para se mover entre as linhas. Left/Right vai para o primeiro agente ou terminal da seção de workspace anterior ou seguinte, sem dar a volta. Enquanto você edita uma busca, Left/Right move o cursor de texto. Fora da busca, `b/w/i/d` filtram agentes bloqueados, trabalhando, ociosos ou concluídos, e `a` volta a mostrar todos os terminais. A localização e o caminho do destino selecionado aparecem abaixo da lista. Quando a lista não cabe na tela, use a roda do mouse, clique no trilho da barra de rolagem ou arraste o marcador dela para rolar sem abrir um destino.
+
+## Edição de campos de texto
+
+Os diálogos de nome, os campos de branch de worktree, os filtros e a busca do modo de cópia do Herdr permitem editar na posição do cursor. Estes atalhos valem para os campos do próprio Herdr, não para o shell ou o agente dentro de um painel.
+
+| Ação | Teclas |
+| --- | --- |
+| Mover um caractere | Left / Right, Ctrl+B / Ctrl+F |
+| Mover para o início / fim | Home / End, Ctrl+A / Ctrl+E |
+| Mover uma palavra | Alt+B / Alt+F |
+| Apagar o caractere anterior | Backspace, Ctrl+H |
+| Apagar o próximo caractere | Delete, Ctrl+D |
+| Recortar até o início / fim | Ctrl+U / Ctrl+K |
+| Recortar a palavra anterior | Ctrl+W, Alt+Backspace, Ctrl+Backspace |
+| Recortar a próxima palavra | Alt+D |
+| Inserir o último texto recortado | Ctrl+Y |
+
+Digitar e colar inserem o texto na posição do cursor. Mover e apagar respeitam os limites de grafemas Unicode, e valores longos rolam na horizontal. O texto recortado fica dentro do campo atual e não usa a área de transferência do sistema. Os atalhos com Alt exigem que o terminal informe Alt/Meta. Enter e Esc mantêm o comportamento de confirmar e cancelar do diálogo.
+
+## Modo de cópia
+
+Pressione `prefix+[` para entrar no modo de cópia do painel em foco. Para se mover, use `h/j/k/l`, `w/b/e` no estilo do tmux e `W/B/E` para palavras grandes, `{`/`}`, `PageUp`/`PageDown`, `ctrl+b`/`ctrl+f` e `ctrl+u`/`ctrl+d`. Pressione `/` ou `?` para buscar texto literal para a frente ou para trás e depois `n` ou `N` para repetir na mesma direção ou na direção oposta. A busca ignora maiúsculas e minúsculas, a menos que o termo tenha uma letra maiúscula. Use `v` ou Space para iniciar uma seleção, `y` ou Enter para copiá-la e `q` ou Esc para sair sem copiar. Esc limpa uma seleção ou busca ativa antes de sair. O modo de cópia não pausa o processo do painel. A saída continua ao vivo, acompanha o fim do buffer e fica fixa quando você navega pelo histórico. O prefixo configurado mantém o significado normal no modo de cópia. Com o prefixo padrão, `ctrl+b` entra no modo de prefixo em vez de subir uma página, então use outro prefixo se quiser `ctrl+b` para subir uma página no modo de cópia. Selecionar arrastando o mouse copia sem nem entrar no modo de cópia.
+
+Seleções feitas arrastando o mouse e seleções iniciadas com `v`, Space ou `V` continuam ativas durante a saída e os redesenhos, inclusive quando parte do trecho selecionado está fora da área visível. A cópia lê o texto atual desse trecho, não um snapshot congelado. Redimensionar o painel ou alternar entre a tela normal e a tela alternativa dele ainda limpa a seleção. Os resultados de busca e as seleções de palavra por clique duplo mantêm as checagens de mudança de conteúdo.
+
+## Mude o que quiser
+
+Todo atalho é configurável, inclusive o próprio prefixo:
+
+```toml
+[keys]
+prefix = "ctrl+a"
+```
+
+## Sem prefixo
+
+Você pode associar ações do Herdr a combinações de teclas diretas, sem prefixo nenhum. A parte difícil é saber quais combinações são seguras, porque terminais, shells e ambientes de desktop já ocupam a maior parte do teclado.
+
+Qualquer combinação funciona como atalho: `ctrl+j`, `alt+k`, o que for mais confortável para você. Mas uma combinação precisa passar por três camadas antes de o Herdr recebê-la: o sistema operacional, o terminal externo (Ghostty, iTerm2 e outros vêm com os próprios padrões) e os programas que rodam dentro do painel. `ctrl+j` chega ao Herdr sem problema, mas shells e editores a tratam como Enter. `alt+k` está livre no Linux, mas no macOS a maioria dos terminais a compõe em um caractere especial. Se você escolher combinações dessas famílias, confira se elas não conflitam com os atalhos do seu terminal e do seu sistema.
+
+Mapeamos os atalhos padrão do Ghostty, iTerm2, Terminal.app, kitty, WezTerm, Alacritty, Warp, Windows Terminal, GNOME Terminal e Konsole, além dos atalhos globais do GNOME e do KDE. Uma família de modificadores fica quase intocada em todos eles: `ctrl+alt`. Os terminais a deixam livre, e a composição da tecla Option do macOS, que bloqueia combinações só com `alt`, não a afeta. Ela também passa até por terminais sem um protocolo de teclado moderno. É um padrão seguro, mas a escolha é sua.
+
+Esta configuração mantém os atalhos com prefixo funcionando e acrescenta combinações diretas:
+
+```toml
+[keys]
+focus_pane_left = ["prefix+h", "ctrl+alt+h"]
+focus_pane_down = ["prefix+j", "ctrl+alt+j"]
+focus_pane_up = ["prefix+k", "ctrl+alt+k"]
+focus_pane_right = ["prefix+l", "ctrl+alt+l"]
+previous_tab = ["prefix+p", "ctrl+alt+["]
+next_tab = ["prefix+n", "ctrl+alt+]"]
+new_tab = ["prefix+c", "ctrl+alt+c"]
+split_vertical = ["prefix+v", "ctrl+alt+d"]
+split_horizontal = ["prefix+minus", "ctrl+alt+shift+d"]
+zoom = ["prefix+z", "ctrl+alt+z"]
+```
+
+Algumas combinações com `ctrl+alt` já estão ocupadas em outros lugares. Evite estas:
+
+| Combinação | Usada por |
+| --- | --- |
+| `ctrl+alt+arrows` | troca de workspace do GNOME, padrões do Ghostty e do Konsole |
+| `ctrl+alt+t` | "Launch terminal" no Ubuntu e no Fedora |
+| `ctrl+alt+l` / `ctrl+alt+a` | tela de bloqueio / janela de atenção do KDE |
+| `ctrl+alt+s` / `ctrl+alt+u` | Konsole |
+| `ctrl+alt+f1..f12` | troca de console virtual do Linux |
+
+Se uma combinação direta não fizer nada, o terminal ou o ambiente de desktop a consumiu antes de o Herdr recebê-la. Remapeie um dos lados: libere a combinação nas configurações do terminal ou escolha outra combinação no Herdr.

@@ -1,0 +1,89 @@
+---
+title: Conceitos
+description: Entenda workspaces, abas, painéis, agentes, sessões e modos do Herdr.
+---
+
+O Herdr é um gerenciador de workspaces de terminal. Ele mantém processos reais de terminal rodando e acrescenta uma estrutura em volta deles.
+
+## Workspace
+
+Um workspace é o contêiner de projeto de nível mais alto. Use um workspace por repositório, tarefa ou investigação.
+
+Um workspace contém abas e painéis. Na barra lateral, o workspace mostra o estado agregado dos agentes dentro dele, e assim você vê qual projeto precisa de atenção.
+
+## Aba
+
+Uma aba é um layout dentro de um workspace. Use abas para separar visões como `agents`, `logs`, `server` ou `review`.
+
+Você pode referenciar as abas pela CLI e pela API de socket.
+
+## Painel
+
+Um painel é um terminal real. O Herdr renderiza a saída do terminal, envia a entrada de volta ao processo e preserva o painel quando você desanexa (detach) o cliente.
+
+Você pode dividir um painel para a direita ou para baixo. Também pode renomear o painel à mão, ler o conteúdo dele pela CLI, enviar entrada a ele e fechá-lo.
+
+## UI com mouse
+
+O Herdr é pensado para o mouse. Você pode clicar em painéis, abas, workspaces e agentes. Pode arrastar as bordas das divisões, selecionar texto e usar os menus do botão direito. Tudo o que vem abaixo também funciona com o mouse. Os atalhos de teclado são uma camada opcional.
+
+Se você prefere controlar tudo pelo teclado, ou quer que o Herdr pare de capturar a entrada do mouse, desative a captura do mouse:
+
+```toml
+[ui]
+mouse_capture = false
+```
+
+## Agente
+
+Um agente é um processo que o Herdr reconhece dentro de um painel. O Herdr detecta agentes pelos processos em primeiro plano, pelos manifests de tela e por integrações opcionais.
+
+Os estados de agente são:
+
+| Estado | Significado |
+| --- | --- |
+| `blocked` | O agente precisa de uma entrada, de uma aprovação ou de uma decisão. |
+| `working` | O agente está rodando ativamente. |
+| `done` | O agente terminou e você ainda não olhou para ele. |
+| `idle` | O agente terminou ou está esperando, e você já viu. |
+| `unknown` | O Herdr não consegue classificar o estado com confiança. |
+
+Cada cliente registra quais conclusões já exibiu. Ver uma conclusão em um cliente não limpa o badge Done de outro cliente. Os status da CLI e da API usam o registro do servidor sobre o que já foi visto, então podem não bater com o badge de um cliente específico. Tanto `idle` quanto `done` significam que o agente está pronto para receber entrada.
+
+## Sessão
+
+Uma sessão é um namespace persistente de servidor do Herdr. O comando `herdr` sem argumentos se anexa à sessão padrão.
+
+Sessões nomeadas são namespaces de runtime separados:
+
+```bash
+herdr session list
+herdr session attach work
+herdr session attach side-project
+```
+
+Comece pelos workspaces. Use sessões nomeadas quando precisar de painéis, sockets e estado de runtime persistido totalmente separados.
+
+## Cliente e servidor
+
+Por padrão, o Herdr roda como um servidor em segundo plano com um ou mais clientes anexados.
+
+O servidor controla os painéis e o estado dos processos. O cliente é a interface de terminal anexada a esse servidor.
+
+Com um cliente anexado, todas as abas seguem o tamanho dele, como antes. Com vários clientes, cada um pode ver o próprio workspace e a própria aba. Quando os clientes veem abas diferentes, cada aba segue o cliente que a exibe. Quando vários clientes veem a mesma aba, o último que focou, selecionou ou interagiu com ela controla o tamanho dos painéis dessa aba.
+
+Desanexe o cliente com `ctrl+b q`. O servidor e os agentes continuam rodando.
+
+Se quiser encerrar a sessão e parar os painéis dela, pare o servidor:
+
+```bash
+herdr server stop
+```
+
+## Modos
+
+O Herdr tem o modo de terminal, o modo de prefixo e o modo de navegação.
+
+O modo de terminal envia as teclas ao painel em foco. O modo de prefixo espera uma ação do Herdr depois da tecla de prefixo. O modo de navegação é a interface persistente de navegação entre workspaces.
+
+Pressione a tecla de prefixo, `ctrl+b` por padrão, e depois uma tecla de ação, como `c` para uma aba nova ou `w` para navegar entre workspaces. Veja [Teclado](/pt-br/docs/keyboard/) se a ideia de prefixo for nova para você.

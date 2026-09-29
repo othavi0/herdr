@@ -1,0 +1,117 @@
+---
+title: Adicionar suporte ao Herdr no seu agente
+description: Informe ao Herdr o estado e o comando de retomada do seu agente de programação a partir do seu próprio código, sem adicionar suporte nativo ao Herdr.
+---
+
+Se você desenvolve um agente de programação, pode torná-lo um cidadão de primeira classe no Herdr a partir do seu próprio código. Você não precisa abrir um pull request no Herdr nem esperar uma versão nova do Herdr.
+
+Quando o seu agente passa a informar o estado ao Herdr, os usuários ganham:
+
+- o nome do seu agente e o estado `idle`, `working` ou `blocked` na barra lateral e em `herdr agent list`
+- notificações quando ele termina ou precisa de uma decisão
+- `herdr agent wait` e outras automações que esperam pelo estado do agente
+- a mesma sessão de volta no mesmo painel depois de um reinício do servidor do Herdr
+
+O Herdr mantém as integrações dos agentes cujos fornecedores não publicam uma. Se você mantém o seu agente e cuida da integração, pode corrigi-la no seu próprio calendário de versões.
+
+## Como funciona
+
+Todo processo em um painel do Herdr herda estas variáveis de ambiente:
+
+| Variável | Significado |
+| --- | --- |
+| `HERDR_ENV` | `1` dentro do Herdr |
+| `HERDR_PANE_ID` | O painel onde o seu agente roda |
+| `HERDR_BIN_PATH` | O binário do Herdr dono desse painel |
+| `HERDR_SOCKET_PATH` | O socket da API do Herdr |
+
+O seu agente envia três tipos de informe por `"$HERDR_BIN_PATH"`:
+
+1. **Estado.** Informe `idle`, `working` ou `blocked` sempre que ele mudar.
+2. **Comando de retomada.** Informe o comando que reabre a sessão atual.
+3. **Liberação.** Libere o painel quando o seu agente sair.
+
+Só envie informes quando `HERDR_ENV=1` e as outras variáveis estiverem definidas. Fora do Herdr, a sua integração não deve fazer nada.
+
+## Informar o estado
+
+```bash
+"$HERDR_BIN_PATH" pane report-agent "$HERDR_PANE_ID" \
+  --source my-agent \
+  --agent my-agent \
+  --state working \
+  --seq 1
+```
+
+- Informe `working` quando um turno começar, `idle` quando o seu agente estiver pronto para entrada e `blocked` quando ele precisar que o usuário decida algo. Adicione `--message` para explicar um bloqueio.
+- `--agent` é o nome que os usuários veem. Use o nome do seu próprio agente, não o nome de um agente que já tem suporte no Herdr.
+- `--source` identifica a sua integração. Mantenha esse valor estável e único. Não comece o valor com `herdr:`, porque as integrações do próprio Herdr usam esse prefixo.
+- `--seq` é opcional, mas recomendado. Ele precisa aumentar a cada informe da sua fonte, inclusive entre sessões e reinícios do seu agente. Um timestamp funciona bem. O Herdr ignora informes cujo número não seja maior que o último que ele aceitou, então informes atrasados ou fora de ordem não conseguem sobrescrever um estado mais novo.
+
+## Informar o comando de retomada
+
+Coloque depois de `--` o comando que retoma a sessão atual. Inclua as opções de que essa sessão precisa, como o modelo ou o modo de permissão, para que a sessão retomada se comporte do mesmo jeito:
+
+```bash
+"$HERDR_BIN_PATH" pane report-agent "$HERDR_PANE_ID" \
+  --source my-agent \
+  --agent my-agent \
+  --state idle \
+  --seq 2 \
+  --agent-session-id "$SESSION_ID" \
+  -- my-agent --resume "$SESSION_ID" --model my-model
+```
+
+Você pode anexar o comando a qualquer informe de estado ou enviá-lo com `pane report-agent-session` quando só a sessão mudar. Informe o comando de novo sempre que o seu agente trocar de sessão.
+
+Depois de um reinício do servidor do Herdr, o Herdr abre o painel no mesmo diretório e roda esse comando lá. O comando precisa seguir estas regras:
+
+- A primeira palavra é um nome de comando simples no `PATH` do usuário, como `my-agent`, e não um caminho.
+- Nenhum argumento contém apóstrofo.
+- A sua fonte precisa ocupar o painel primeiro, então envie um informe de estado com `report-agent` antes do comando ou junto com ele. Caso contrário, o Herdr responde com `resume_not_accepted`.
+
+O Herdr recusa com `invalid_resume_argv` um comando que quebra as duas primeiras regras e não aplica esse informe. Os usuários podem desativar a retomada com `[session] resume_agents_on_restore = false`.
+
+## Liberar ao sair
+
+```bash
+"$HERDR_BIN_PATH" pane release-agent "$HERDR_PANE_ID" \
+  --source my-agent \
+  --agent my-agent \
+  --seq 3
+```
+
+A liberação apaga do painel, na hora, o nome, o estado e o comando de retomada do seu agente. Só libere quando o usuário realmente sair. Se o seu agente substituir uma sessão por outra no mesmo processo, informe a nova sessão em vez de liberar.
+
+Se o seu agente sair sem liberar, o Herdr percebe assim que o painel volta ao prompt ocioso do shell e apaga o agente e o comando de retomada dele. Isso costuma levar um ou dois segundos. É uma rede de segurança, não um substituto para a liberação.
+
+## Não atrapalhe o agente
+
+- Não deixe o Herdr tornar o seu agente mais lento. Envie os informes em segundo plano ou com um timeout curto e ignore as falhas.
+- Envie só o estado mais recente. Se várias mudanças se acumularem enquanto um informe está em andamento, descarte as mais antigas.
+- Versões mais antigas do Herdr ignoram o comando de retomada, então todo o resto continua funcionando nelas.
+
+## Usar o socket direto
+
+`HERDR_BIN_PATH` e a CLI são a opção portátil, inclusive no Windows. Se o seu agente precisar de IPC direto, envie os pedidos equivalentes `pane.report_agent`, `pane.report_agent_session` e `pane.release_agent` descritos na [Socket API](/pt-br/docs/socket-api/#informe-de-estado-do-agente). O comando de retomada vai no array `resume_argv`.
+
+## Conferir a integração
+
+Inicie o seu agente em um painel do Herdr e depois confira o que o Herdr vê:
+
+```bash
+herdr pane get "$HERDR_PANE_ID"
+herdr agent list
+```
+
+Para testar a restauração sem mexer na sua sessão normal, use uma sessão nomeada separada:
+
+1. Inicie `herdr --session my-agent-test` e depois rode o seu agente em um painel.
+2. Pare essa sessão com `herdr session stop my-agent-test`.
+3. Inicie `herdr --session my-agent-test` de novo. O painel deve rodar o seu comando de retomada, e o seu agente deve voltar a informar o estado.
+
+## Exemplo
+
+O [informante do Herdr embutido no Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent/blob/main/packages/coding-agent/src/core/extensions/builtin/herdr-agent-state.ts) é uma integração real. Ele só se ativa dentro do Herdr, mapeia os eventos do agente para `working`, `idle` e `blocked`, mantém a ordem dos informes entre sessões e libera o painel ao sair.
+
+Para mudar como o seu agente aparece sem mudar o estado dele, como um título ou um texto de status personalizado, veja [Rótulos de status personalizados](/pt-br/docs/integrations/#rótulos-de-status-personalizados).

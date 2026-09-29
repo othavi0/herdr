@@ -135,6 +135,7 @@ release-docs-check:
     just docs-contract-test
     @test -f docs/next/README.md
     @test -f docs/next/README.zh-CN.md
+    @test -f docs/next/README.pt-BR.md
     @if ! diff -u CHANGELOG.md docs/next/CHANGELOG.md; then \
         echo "error: CHANGELOG.md differs from docs/next/CHANGELOG.md; finalize release notes before releasing"; \
         exit 1; \
@@ -147,7 +148,7 @@ release-docs-check:
     done
     @test -d docs/next/website/src/content/docs
     @for file in docs/next/website/src/content/docs/*.mdx; do \
-        for locale in ja zh-cn; do \
+        for locale in ja zh-cn pt-br; do \
             translated="docs/next/website/src/content/docs/$locale/$(basename "$file")"; \
             if [ ! -f "$translated" ]; then \
                 echo "error: $translated is missing; translate next docs before releasing"; \
@@ -155,7 +156,7 @@ release-docs-check:
             fi; \
         done; \
     done
-    @for file in docs/next/website/src/content/docs/ja/*.mdx docs/next/website/src/content/docs/zh-cn/*.mdx; do \
+    @for file in docs/next/website/src/content/docs/ja/*.mdx docs/next/website/src/content/docs/zh-cn/*.mdx docs/next/website/src/content/docs/pt-br/*.mdx; do \
         staged="docs/next/website/src/content/docs/$(basename "$file")"; \
         if [ ! -f "$staged" ]; then \
             echo "error: $file has no matching english doc; remove the stale translation"; \

@@ -1,0 +1,103 @@
+---
+title: Como trabalhar com o Herdr
+description: Rode o Herdr localmente, dentro de uma sessão SSH ou por anexação remota.
+---
+
+Rode o Herdr onde o trabalho está. Anexe-se de onde você estiver.
+
+O Herdr é um servidor de sessão em segundo plano mais um ou mais clientes de terminal. Os painéis continuam rodando no servidor. Os clientes se anexam, se desanexam (detach) e renderizam a sessão.
+
+## Trabalho local
+
+Inicie o Herdr a partir do diretório do projeto:
+
+```bash
+herdr
+```
+
+O Herdr inicia a sua sessão local em segundo plano ou se anexa a ela automaticamente. Você não gerencia sockets. Rode shells, servidores, testes e agentes normalmente dentro dos painéis.
+
+Desanexe o cliente com `ctrl+b q`. Os seus painéis continuam rodando.
+
+Reanexe depois:
+
+```bash
+herdr
+```
+
+Se quiser encerrar a sessão e parar os painéis dela, encerre o servidor:
+
+```bash
+herdr server stop
+```
+
+## Trabalho remoto por SSH comum
+
+Entre por SSH na máquina que tem o código e as credenciais e rode o Herdr lá:
+
+```bash
+ssh you@server
+herdr
+```
+
+Esse caminho funciona como um multiplexador de terminal. O seu shell é remoto. O servidor do Herdr é remoto. Os agentes e os painéis rodam na máquina remota. Desanexe com `ctrl+b q`, desconecte, depois volte por SSH e rode `herdr` de novo.
+
+Use esse caminho quando você já trabalha dentro de um shell SSH, quando está em um cliente SSH no celular ou no tablet, ou quando quer a configuração mais simples.
+
+## Trabalhar pelo celular
+
+O Herdr funciona no celular sem app mobile nem painel web. Instale qualquer cliente SSH, conecte-se à máquina onde os seus agentes rodam e inicie o Herdr lá:
+
+```bash
+ssh you@server
+herdr
+```
+
+A mesma sessão persistente do Herdr abre no terminal do seu celular. A TUI se adapta a telas estreitas, então você pode inspecionar agentes, trocar de workspace e conferir painéis sem sair do SSH.
+
+No iPhone, apps como o [moshi](https://getmoshi.app/) funcionam bem.
+
+<div class="mobile-doc-shots">
+  <figure>
+    <img src="/assets/mobile-agent-session-v2.jpeg" alt="Sessão de agente do Herdr por SSH em um celular" loading="lazy" />
+    <figcaption>sessão de agente por SSH</figcaption>
+  </figure>
+  <figure>
+    <img src="/assets/mobile-switch-menu-v2.jpeg" alt="Menu de troca responsivo do Herdr em um celular" loading="lazy" />
+    <figcaption>menu de troca responsivo</figcaption>
+  </figure>
+</div>
+
+## Trabalho remoto a partir do terminal local
+
+Anexe-se por SSH sem abrir um shell antes:
+
+```bash
+herdr --remote workbox
+herdr --remote ssh://you@server:2222
+```
+
+O servidor remoto mantém os painéis rodando e envia o conteúdo do terminal e o estado da sessão por SSH. O seu Herdr local desenha a interface com o seu tema e as suas configurações de apresentação locais.
+
+Use esse caminho quando quiser que a sessão remota pareça local. O cliente roda na sua máquina, então o Herdr pode repassar ao servidor remoto recursos do desktop local, como colar imagens da área de transferência. Se você entrar por SSH primeiro e rodar `herdr` no servidor, o Herdr roda inteiramente naquele servidor e não consegue ler a área de transferência do seu desktop local.
+
+Para destinos que você usa sempre, coloque o host na sua configuração do SSH:
+
+```text
+Host workbox
+  HostName server.example.com
+  User you
+  Port 2222
+```
+
+Depois, anexe com:
+
+```bash
+herdr --remote workbox
+```
+
+## Qual caminho usar
+
+Use `herdr` para trabalho local. Use `ssh you@server` e depois `herdr` quando quiser que o Herdr se comporte como o tmux naquele shell remoto ou quando estiver usando um cliente SSH no celular. Use `herdr --remote <host>` para ter uma interface local anexada a uma sessão remota, incluindo colar imagens da área de transferência local. Para manter o Local e várias máquinas SSH em uma janela, salve as máquinas com `herdr machine add <host> --label <label>`. Veja [Conectar máquinas](/pt-br/docs/connecting-machines/).
+
+Para detalhes da inicialização remota, sessões remotas nomeadas, binários personalizados e anexação direta ao terminal, veja [Persistência e acesso remoto](/pt-br/docs/persistence-remote/).

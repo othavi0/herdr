@@ -1,0 +1,128 @@
+---
+title: Conectar máquinas
+description: Trabalhe com o Local e máquinas SSH salvas em uma única janela do Herdr, com navegação de agentes compartilhada e reconexões independentes.
+---
+
+Mantenha o trabalho local e os agentes remotos em uma única janela do Herdr. Salve uma máquina SSH uma vez e depois alterne entre os workspaces dela e o Local sem abrir outro cliente. A lista de agentes inclui as máquinas conectadas, então você vê onde cada trabalho está rodando e qual agente precisa de uma resposta.
+
+Cada máquina mantém o próprio servidor do Herdr, as próprias sessões e os próprios processos em execução. Perder a conexão com uma máquina não desconecta as outras.
+
+O Herdr pede compressão ao SSH para reduzir o tráfego de atualizações de tela em conexões limitadas. Isso funciona com servidores do Herdr mais antigos e compatíveis e não muda a forma como o Herdr entrega a digitação e outras entradas. A opção `-C` do Herdr sobrepõe `Compression no` na sua configuração do SSH. Se o SSH reaproveitar uma conexão existente por meio de um ControlMaster externo, essa conexão mantém a configuração de compressão original.
+
+### Recuperar a autenticação SSH
+
+Em clientes Linux e macOS, quando `remote.manage_ssh_config=true`, o Herdr compartilha uma conexão OpenSSH aprovada entre a adição de máquina, a barra lateral e os comandos de API de máquinas salvas. Execute `herdr machine status [<label-or-id>] [--json]` para fazer checagens atuais e não interativas. **Reachable** quer dizer que o servidor remoto do Herdr está disponível agora, não que toda TUI aberta está conectada. Execute `herdr machine reconnect <label-or-id>` em um terminal para concluir a autenticação SSH nativa e verificar a máquina salva. Esse comando não instala nem atualiza o Herdr. Os clientes abertos checam de novo as conexões que falharam em até 30 segundos, sem precisar reiniciar. Clicar em **`! auth`**, **`! error`** ou no status de reconexão de uma conexão que falhou mostra um aviso com o erro mais recente e o comando de CLI correspondente. Isso nunca abre um popup de credenciais. O resto da linha da máquina mantém o comportamento normal de expandir e recolher.
+
+A conexão compartilhada usa `ControlPersist 600` (10 minutos de ociosidade). Isso não é a validade do MFA. Conexões ativas podem continuar abertas, enquanto a política da empresa, o servidor SSH ou a rede podem encerrá-las antes. A recuperação local no Windows ainda não tem suporte. Em conexões SSH não gerenciadas, a autenticação continua sendo responsabilidade sua. Rodar `ssh` sozinho não dá aprovação ao Herdr, a menos que use o ControlPath compartilhado. A checagem da chave do host não muda. Uma chave de host desconhecida ou alterada continua como **Attention**.
+
+## Antes de conectar
+
+Você precisa de acesso SSH normal à máquina remota. Confirme primeiro:
+
+```bash
+ssh workbox
+```
+
+`workbox` pode ser um host da sua configuração do SSH. Você também pode usar um destino como `ssh://you@server:2222`.
+
+As conexões com várias máquinas funcionam com clientes Linux, macOS e Windows que se conectam a servidores Linux ou macOS em x86_64 ou aarch64, ou a servidores Windows em x86_64. A configuração interativa pode instalar ou atualizar o pacote remoto completo depois de uma confirmação. As reconexões em segundo plano só descobrem pacotes já instalados. Veja [Anexar remotamente via SSH](/pt-br/docs/persistence-remote/#anexar-remotamente-via-ssh) para a configuração do SSH, a autenticação e binários personalizados.
+
+## Adicionar uma máquina
+
+Rode a configuração em um terminal interativo para que o Herdr possa perguntar antes de instalar ou substituir qualquer coisa:
+
+```bash
+herdr machine add workbox
+```
+
+Em um terminal interativo, o Herdr descobre as sessões em execução. Ele seleciona a única sessão em execução ou, quando há várias, deixa você escolher com Up/Down e Enter. Esc ou Ctrl+C cancela. Se uma consulta bem-sucedida não encontrar sessões em execução, a configuração usa `default`. Se não encontrar nenhuma instalação do Herdr, a configuração oferece instalar o Herdr para `default`. Se um binário instalado não conseguir informar as sessões dele, a configuração mostra o erro. Passe `--remote-session <name>` para selecionar uma sessão explicitamente.
+
+A barra lateral mostra a sessão padrão como `workbox`, o host SSH sem nenhum prefixo `user@`. Adicione `--label "Build machine"` para escolher outro nome. Um perfil de máquina aponta para uma única sessão remota. Ele não junta todas as sessões do host. Comandos não interativos usam `default`, a menos que você passe `--remote-session`.
+
+Para pular a descoberta e usar uma sessão específica, adicione `--remote-session`:
+
+```bash
+herdr machine add workbox --remote-session agents
+```
+
+Sem `--label`, essa máquina aparece como `workbox/agents`. Se o nome padrão já estiver em uso, `machine add` pede que você passe `--label`.
+
+Em servidores Windows, a configuração também confere os executáveis usados por processos do Herdr que pertencem ao usuário SSH. Ela valida os recursos deles antes de reaproveitá-los, então o Herdr pode usar uma build compatível em execução mesmo quando o `PATH` do SSH aponta para uma instalação mais antiga.
+
+O Herdr confere tanto o binário instalado quanto o servidor em execução. Ele inicia o servidor em segundo plano solicitado antes de salvar o perfil. Versões compatíveis de cliente e servidor não precisam ser iguais. Instalações ausentes ou incompatíveis passam por uma configuração com aprovação. Quando o servidor em execução precisa ser substituído, a configuração pergunta antes de parar o servidor e os processos dos painéis dele e depois inicia o servidor compatível. A resposta padrão é No. Se a instalação e a substituição forem necessárias, uma única confirmação cobre as duas. `machine add` não usa o handoff ao vivo experimental. Se você cancelar a configuração ou ela falhar, o Herdr não salva o perfil.
+
+Execute `herdr` para abrir a interface. Se já houver um cliente local aberto, as máquinas adicionadas e ativadas costumam aparecer em até um segundo e se conectam em segundo plano sem mudar a sua seleção. Uma troca de máquina em andamento termina antes de o Herdr aplicar as mudanças de perfil. O servidor remoto continua rodando depois que a configuração termina.
+
+## Alternar entre máquinas
+
+Escolha uma máquina ou um dos workspaces dela na barra lateral. A máquina selecionada recebe a entrada dos painéis e o tamanho do terminal e fornece o conteúdo e os gráficos visíveis do terminal. As outras máquinas conectadas continuam atualizando as informações de workspace, os estados dos agentes e as notificações, sem transmitir as telas dos painéis.
+
+Clique na seta ao lado de qualquer máquina para recolher ou expandir a lista de workspaces dela sem sair do workspace atual. Isso também funciona enquanto essa máquina está reconectando.
+
+Para navegar pelo teclado, pressione `prefix+w` e depois use as teclas de navegação de workspace (Up/Down por padrão) para destacar workspaces das máquinas conectadas, na ordem da barra lateral. Enter ativa o workspace destacado. Esc ou a tecla de prefixo cancela sem trocar. As barras laterais compacta e expandida mostram a linha destacada, inclusive sob uma máquina recolhida. No desktop, a navegação dá a volta nas pontas. O seletor do celular para no primeiro ou no último workspace. A navegação pula as máquinas desconectadas.
+
+Ao destacar um workspace em outra máquina, pressione Enter antes de usar outras ações do teclado. Isso evita que atalhos de painel, aba, workspace ou comando personalizado ajam na máquina atual por engano. No desktop, um clique cancela a prévia remota feita pelo teclado. As barras laterais expandidas respeitam os grupos de worktree recolhidos de cada máquina.
+
+O Local abre na hora ao iniciar, sem esperar as conexões SSH. Selecionar o Local também cancela uma troca remota inacabada sem esperar a resposta da máquina remota. Se o próprio Local estiver reconectando, o Herdr retoma a sua seleção quando o Local estiver pronto. O Local aceita entrada assim que a tela nova e os ajustes do terminal dele estiverem prontos. Uma máquina travada não segura a entrada de outra máquina. Vários clientes do Herdr também podem ver abas diferentes do mesmo servidor, cada um de forma independente. Veja [Cliente e servidor](/pt-br/docs/concepts/#cliente-e-servidor) para o dimensionamento de abas compartilhadas.
+
+Quando uma conexão cai, o último estado de workspace e de agente continua visível, mas esmaecido. Essa é uma informação em cache, não um estado ao vivo. A entrada e a navegação nesses painéis em cache ficam desativadas até chegarem uma conexão nova e a tela correspondente. Reconectar nunca tira a seleção da máquina que você está usando.
+
+## Renomear, desativar ou remover
+
+Leia os IDs de perfil na lista em vez de deduzi-los dos rótulos ou dos nomes de host:
+
+```bash
+herdr machine list
+herdr machine rename <profile-id> --label "New name"
+herdr machine disable <profile-id>
+herdr machine enable <profile-id>
+herdr machine remove <profile-id>
+```
+
+Em scripts, adicione `--json` a `machine list`.
+
+Renomear muda o rótulo exibido sem reconectar. Desativar guarda o perfil para depois. Remover apaga o perfil. As duas ações desconectam do cliente só essa máquina e deixam as sessões remotas e os agentes dela rodando, mesmo que o host esteja inacessível.
+
+Remover ou desativar a máquina que você está vendo leva você de volta ao Local. Se o Local estiver indisponível, o Herdr mostra isso e tenta a conexão de novo em vez de selecionar outra máquina remota. Com máquinas salvas ativadas, o cliente pode continuar utilizável mesmo que o Local falhe ou reinicie.
+
+## Problemas de conexão
+
+- **Reconnecting:** o Herdr tenta de novo automaticamente depois de uma interrupção de rede, suspensão ou falha do SSH. Falhas repetidas aumentam o intervalo até dois minutos. Conexões breves bem-sucedidas não o zeram. Uma conexão precisa ficar saudável por um minuto antes que a próxima interrupção ganhe uma nova tentativa rápida. O Herdr acompanha a atividade das conexões SSH no nível da aplicação e as sonda quando estão quietas, então uma conexão quebrada não fica Online indefinidamente. O Local detecta o fechamento ou a falha da conexão nativa em vez de usar sondas de saúde remotas.
+- **Attention:** o destino precisa de uma ação, como autenticação, aprovação da chave do host ou um servidor compatível. As outras máquinas continuam utilizáveis. **`! auth`** quer dizer que a autenticação falhou. **`! error`** indica outro problema. Clique no badge para ver o erro e um comando de CLI. Em uma barra lateral recolhida, os dois aparecem como `!`.
+- **Erro no arquivo de máquinas salvas:** um catálogo ilegível ou inválido não altera as conexões atuais. O Herdr mostra um aviso e tenta ler o arquivo de novo automaticamente.
+
+Quando as duas instalações têm suporte à limpeza de ponte ociosa, as conexões de máquinas salvas com Linux e macOS também fecham a ponte remota depois de um minuto sem tráfego em nenhuma direção. O tempo de suspensão conta para esse prazo, e o Herdr confere o prazo quando o host acorda. Conexões saudáveis e quietas trocam checagens de saúde. Acompanhar uma saída contínua não exige digitar. A limpeza deixa o servidor remoto do Herdr, as sessões e os processos dos painéis rodando. Instalações mais antigas continuam compatíveis sem essa limpeza opcional.
+
+As conexões em segundo plano nunca respondem a prompts nem instalam, atualizam, reiniciam ou fazem handoff de um servidor. Em um Attention que não seja de autenticação, execute em um terminal interativo o comando de configuração avulsa que o Herdr mostra, por exemplo:
+
+```bash
+herdr --remote workbox
+```
+
+Use o destino do seu perfil. Se você escolheu uma sessão nomeada ao adicionar a máquina, inclua aqui também o `--session <name>` opcional. Siga os prompts de configuração que aparecerem. Os clientes abertos tentam de novo automaticamente. `machine reconnect` não instala nem atualiza o Herdr. Não pare um servidor em execução só porque a versão dele é diferente da do cliente.
+
+Se a autenticação falhar, confira primeiro o SSH comum. Se a chave for protegida por passphrase, carregue-a com `ssh-add` antes de iniciar as conexões em segundo plano não interativas do Herdr.
+
+Para autenticação do Git ou assinatura SSH dentro de painéis remotos, ative `ForwardAgent yes` para o host confiável na sua configuração do SSH. O Herdr não ativa o encaminhamento por você. Quando uma sessão inicia com um agent SSH, os servidores Linux e macOS atualizados dão aos painéis um endereço estável do agent, então os painéis existentes e os novos podem usar o agent encaminhado depois que `--remote` ou uma máquina salva reconecta. Um agent herdado que funciona, ou uma conexão anterior, tem prioridade sobre clientes posteriores e checagens temporárias de configuração. Se ele sumir, outra anexação ativa pode fornecer o agent.
+
+Isso exige um servidor remoto atualizado, não só um cliente local atualizado. Sessões locais iniciadas sem um agent deixam `SSH_AUTH_SOCK` como está. Painéis criados antes da atualização do servidor, ou antes de a sessão receber um agent pela primeira vez, mantêm o ambiente original. Recrie esses painéis uma vez para que herdem o endereço estável. Servidores compatíveis mais antigos e conexões sem encaminhamento de agent ainda podem anexar normalmente.
+
+## Ajustes e automação
+
+Por padrão, a interface usa o tema, os ajustes da barra lateral e os atalhos de teclado locais do cliente. Os comandos personalizados e os plugins anunciados pelo servidor selecionado continuam rodando nele. O Herdr não copia plugins de comando, configuração, executáveis nem segredos locais para os hosts SSH. Comandos remotos ausentes falham de forma visível. Use a ação `reload config` da interface depois de editar os ajustes do cliente. Veja [Configuração](/pt-br/docs/configuration/#recarregar-a-configuração).
+
+As linhas de agente padrão mostram um token `machine` quando há várias máquinas. O Herdr preserva as linhas personalizadas existentes. Adicione `machine` explicitamente se quiser esse rótulo no seu layout. Os [layouts das linhas da barra lateral](/pt-br/docs/configuration/#layouts-das-linhas-da-barra-lateral) também aceitam cores condicionais para os rótulos de máquina.
+
+Os IDs de workspace, aba e painel e os nomes de agente valem dentro de um único servidor. Duas máquinas podem ter `w1:p1` ou um agente chamado `reviewer`. Selecionar uma máquina na interface não redireciona os comandos de CLI que rodam em um painel existente. Eles continuam usando a sessão e o socket herdados desse painel. Para automação remota, use `herdr --machine <label-or-id> agent list` e depois passe o mesmo prefixo ao controlar esses IDs remotos. A CLI usa direto o destino SSH e a sessão do perfil salvo e não precisa de uma TUI aberta. Sem `--machine`, o roteamento existente por sessão e socket não muda. Veja a [referência da CLI](/pt-br/docs/cli-reference/#máquinas-ssh-salvas) para ver os comandos com suporte, os requisitos de atualização e as regras de caminho remoto.
+
+## Atualizações e dados salvos
+
+Os perfis salvos guardam só um ID opaco, o rótulo, o destino SSH, a sessão remota explícita e o estado de ativação. O Herdr não guarda senhas, chaves privadas, tickets de agent nem sockets de controle do SSH no catálogo. A autenticação fica com o OpenSSH.
+
+O Herdr também guarda, à parte, o sistema operacional remoto de cada máquina e o caminho resolvido do executável, para que comandos `--machine` repetidos possam pular a descoberta. Os perfis existentes aprendem as informações que faltam no primeiro uso. Esse cache é opcional. Arquivos de cache ausentes, inválidos ou sem permissão de escrita não impedem os comandos de funcionar. Os comandos continuam conferindo a compatibilidade do servidor ao vivo. Se um executável em cache sumiu ou não tem mais suporte ao encaminhamento de API, o Herdr o redescobre durante a checagem inicial somente leitura. Ele nunca repete automaticamente um comando que pode já ter mudado o estado remoto.
+
+O cliente e o servidor negociam a compatibilidade em vez de exigir versões idênticas. As conexões de máquinas salvas também precisam dos recursos `surface_interest` e `health_check` do servidor. Servidores mais antigos sem esses recursos mostram Attention até você atualizá-los explicitamente, mesmo que uma anexação avulsa funcione. Os outros métodos ausentes no servidor desativam só as ações correspondentes.
+
+Atualizar um cliente compatível não substitui o servidor remoto em execução nem para os agentes dele. Quando você precisar de um comportamento novo do lado do servidor, atualize esse servidor explicitamente. A substituição normal pergunta antes de parar o servidor e os processos dos painéis dele.
+
+O handoff ao vivo é experimental e opcional. Em um servidor com suporte que precise ser substituído durante a configuração avulsa, você pode adicionar explicitamente `--handoff` a `herdr --remote`. Ele não é necessário para conexões normais nem para correções de autenticação. Veja [Atualizar](/pt-br/docs/install/#atualizar) para as opções de reinício e de handoff e [Estado e restauração da sessão](/pt-br/docs/session-state/) para saber o que sobrevive a cada operação.

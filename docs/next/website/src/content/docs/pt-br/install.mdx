@@ -1,0 +1,158 @@
+---
+title: Instalar o Herdr
+description: Instale, atualize e verifique o Herdr no Linux, macOS e Windows.
+---
+
+O Herdr publica binários do canal estável para Linux, macOS e Windows. O Windows tem disponibilidade geral, com limitações próprias da plataforma já documentadas e correções em andamento.
+
+## Instalar
+
+No Linux ou macOS, execute:
+
+```bash
+curl -fsSL https://herdr.dev/install.sh | sh
+```
+
+No Windows, execute:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://herdr.dev/install.ps1 | iex"
+```
+
+Se a segurança de endpoint bloquear esse comando PowerShell sem arquivo, abra o Prompt de Comando e execute:
+
+```cmd
+curl.exe -fsSLo install.cmd https://herdr.dev/install.cmd && install.cmd && del install.cmd
+```
+
+O instalador baixa o binário da versão para a sua plataforma e o coloca no PATH. Novas instalações diretas usam o canal de atualização estável. Instalações preview já existentes no Windows continuam no preview até você trocá-las com `herdr channel set stable`. No Windows, o PATH aponta para o diretório da versão ativa. O instalador também atualiza os aliases de compatibilidade `current` e `bin` do canal estável, então as atualizações não precisam sobrescrever um `herdr.exe` em execução.
+
+## Instalar com Homebrew
+
+Se você já usa Homebrew:
+
+```bash
+brew install herdr
+```
+
+## Instalar com mise
+
+Se você já usa mise:
+
+```bash
+mise use -g herdr
+```
+
+Se o mise mostrar `herdr not found in mise tool registry`, atualize o mise e tente de novo. Versões antigas do mise são anteriores à entrada do Herdr no registro. Como fallback temporário, use `mise use -g github:herdrdev/herdr`.
+
+## Instalar com Nix
+
+Se você já usa Nix, o Herdr oferece um flake que compila o Herdr a partir do código-fonte:
+
+```bash
+nix run github:herdrdev/herdr/v0.x.y
+nix build github:herdrdev/herdr/v0.x.y
+nix profile install github:herdrdev/herdr/v0.x.y
+```
+
+Substitua `v0.x.y` pela tag da versão mais recente. Você pode omitir a tag para acompanhar o `master`, mas, para instalações normais, o recomendado é usar as tags de versão.
+
+O flake também expõe um shell de desenvolvimento:
+
+```bash
+nix develop github:herdrdev/herdr
+```
+
+Use o mesmo fluxo do Nix para atualizar o Herdr. Em uma instalação por perfil, liste as entradas do perfil e atualize a entrada do Herdr:
+
+```bash
+nix profile list
+nix profile upgrade <index-or-name>
+```
+
+Se o Herdr for um input do seu próprio flake, atualize esse input e recompile o sistema, o Home Manager ou o ambiente de desenvolvimento:
+
+```bash
+nix flake update herdr
+```
+
+## Baixar manualmente
+
+Você também pode baixar um binário em [GitHub Releases](https://github.com/herdrdev/herdr/releases).
+
+Escolha o arquivo que corresponde ao seu sistema:
+
+| Sistema | Arquivo |
+| --- | --- |
+| Linux x86_64 | `herdr-linux-x86_64` |
+| Linux aarch64 | `herdr-linux-aarch64` |
+| macOS Intel | `herdr-macos-x86_64` |
+| macOS Apple silicon | `herdr-macos-aarch64` |
+| Windows x86_64 | `herdr-windows-x86_64.zip` |
+
+No Linux ou macOS, torne o arquivo executável e mova-o para algum diretório do PATH.
+
+```bash
+chmod +x herdr-linux-x86_64
+mv herdr-linux-x86_64 ~/.local/bin/herdr
+```
+
+### Arquivo compactado do Windows
+
+As versões estáveis e as prereleases do preview incluem `herdr-windows-x86_64.zip`. O arquivo contém o `herdr.exe` e o runtime ConPTY local do app. Mantenha o diretório extraído inteiro e não copie só o `herdr.exe`.
+
+## Verificar
+
+Inicie o Herdr:
+
+```bash
+herdr
+```
+
+Se o shell não encontrar o `herdr`, reinicie o terminal ou confira se o diretório de instalação está no PATH.
+
+## Atualizar
+
+O Herdr verifica se há novas versões e avisa você no app. Você pode atualizar manualmente:
+
+```bash
+herdr update
+```
+
+Use `herdr update` só em instalações gerenciadas pelo instalador do próprio Herdr. Em instalações via Homebrew, mise e Nix, atualize pelo gerenciador de pacotes correspondente.
+
+Instalações diretas no Linux, macOS e Windows usam o canal de atualização estável por padrão. Para usar as builds preview do `master`, defina o canal:
+
+```bash
+herdr channel set preview
+```
+
+Volte uma instalação direta para o estável do mesmo jeito:
+
+```bash
+herdr channel set stable
+```
+
+Em instalações diretas, trocar de canal consulta o canal escolhido e instala o binário mais recente dele. Se essa atualização falhar, execute `herdr update` para tentar de novo a partir do canal configurado.
+
+As builds preview são prereleases do GitHub publicadas regularmente a partir do branch de desenvolvimento atual. Elas servem para quem quer as correções antes da próxima versão estável, mas podem ter regressões. Instalações via Homebrew, mise e Nix não usam o canal preview.
+
+O canal estável é o recomendado para o uso normal no Windows. O preview recebe correções antes, mas pode ter regressões. Ative-o só se aceitar esse risco em troca das correções. Instalações preview já existentes no Windows continuam no preview até você trocá-las explicitamente. Se uma build preview antiga recusar `herdr channel set stable`, execute `herdr update` uma vez no preview e depois tente a troca de canal de novo.
+
+Por padrão, `herdr update` instala o novo binário e deixa em execução os servidores da geração 1 do endpoint e os processos dos painéis deles. Inicie o Herdr de novo para reconectar com o cliente atualizado. Mudanças só do cliente funcionam na hora. Uma nova ação do lado do servidor fica indisponível até você atualizar e reiniciar esse servidor. Enquanto isso, o cliente mostra um aviso em vez de desconectar. Servidores anteriores à geração 1 do endpoint precisam de uma última parada durante a atualização.
+
+Ao terminar, `herdr update` lista cada servidor em execução que ainda está na versão antiga, com o comando que o reinicia, e as máquinas SSH salvas, que rodam o próprio Herdr. Execute `herdr update` em cada máquina para atualizá-la também.
+
+Para ativar o handoff ao vivo do servidor, um recurso experimental, nas sessões em execução compatíveis, execute:
+
+```bash
+herdr update --handoff
+```
+
+Quando os dois servidores têm suporte à transferência do status do agente, o handoff ao vivo preserva o status do agente informado pelo hook até chegar o próximo informe. Um handoff a partir de um servidor mais antigo pode mostrar temporariamente um agente em execução como ocioso.
+
+O handoff ao vivo não se aplica a atualizações pelos gerenciadores de pacotes Homebrew, mise ou Nix. Nessas instalações, atualize pelo gerenciador de pacotes e depois execute o Herdr de novo para reconectar com o cliente atualizado. O servidor antigo compatível continua em execução. Reinicie-o mais tarde com `herdr server stop` ou `herdr session stop <name>` só quando quiser as mudanças do lado do servidor da nova versão.
+
+## Requisitos
+
+Há binários do canal estável para Linux, macOS e Windows x86_64. Veja [Suporte ao Windows](/pt-br/docs/windows-beta/) para ver os fluxos com suporte e as limitações conhecidas. O Windows ARM64 roda a build x86_64 sob a emulação do Windows.

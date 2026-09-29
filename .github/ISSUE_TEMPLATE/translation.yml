@@ -34,6 +34,7 @@ body:
       options:
         - 日本語 (Japanese)
         - 简体中文 (Simplified Chinese)
+        - Português do Brasil (Brazilian Portuguese)
     validations:
       required: true
 

@@ -1,0 +1,136 @@
+---
+title: Estado e restauração da sessão
+description: Entenda o que o Herdr mantém ao vivo, restaura depois de reiniciar, reproduz do histórico, retoma pelas integrações de agentes e transfere por handoff durante as atualizações.
+---
+
+O Herdr usa caminhos de estado diferentes para situações diferentes.
+
+## O que sobrevive
+
+| Caso | Os processos continuam rodando | O layout volta | A tela recente volta | A conversa do agente é retomada |
+| --- | --- | --- | --- | --- |
+| Desanexar e reanexar | Sim | Sim | Sim, a partir do terminal ao vivo | Sim, porque o processo nunca parou |
+| Reinício do servidor | Não | Sim | Só com o histórico de tela do painel | Só com a restauração da sessão nativa do agente |
+| Atualização sem `--handoff` | Servidores compatíveis continuam rodando; servidores que exigem reinício podem precisar de parada e reinício | Sim, depois do reinício | Só com o histórico de tela do painel | Só com a restauração da sessão nativa do agente |
+| Atualização com `--handoff` | Melhor esforço para servidores em execução com suporte | Sim | Sim, a partir do terminal ao vivo, se o handoff der certo | Sim, porque o processo continua rodando se o handoff der certo |
+
+## Persistência ao vivo
+
+O desanexar (detach) normal mantém o servidor do Herdr rodando. Painéis, shells, agentes, servidores, testes e processos de comando continuam rodando dentro desse servidor.
+
+Desanexe o cliente com `ctrl+b q`. Reanexe depois:
+
+```bash
+herdr
+```
+
+Esse é o caminho de persistência mais forte, porque os processos originais nunca param.
+
+## Restauração por snapshot
+
+Se o servidor do Herdr parar e iniciar de novo, os processos originais dos painéis se perdem. O Herdr restaura o formato salvo da sessão: workspaces, abas, painéis, diretório de trabalho (cwd), layout e foco.
+
+A restauração por snapshot não preserva shells, servidores, testes nem processos arbitrários em execução. Os painéis que não podem usar um caminho de restauração mais forte voltam como shells novos nos diretórios salvos.
+
+Se um diretório salvo não estiver disponível ou o shell não conseguir iniciar, o painel continua no layout com um erro, em vez de sumir ou ir para o seu diretório home. O diretório salvo e a referência da sessão do agente continuam intactos. Corrija o diretório ou a configuração do shell e reinicie o servidor para tentar de novo, ou feche o painel explicitamente para removê-lo.
+
+Ao salvar, o Herdr prefere o diretório do shell ao vivo quando o sistema operacional o expõe, e guarda o último diretório confirmado depois que o shell sai. Nas outras plataformas, os diretórios informados pelo shell continuam sendo o fallback.
+
+Se o Herdr não conseguir ler ou interpretar o `session.json`, ou se o arquivo exigir uma versão mais nova do Herdr, o Herdr registra no log por que o carregamento falhou. Antes de salvar ou limpar a sessão que o substitui, ele preserva os bytes originais em `session-backups/`, ao lado de `session.json`, e registra o caminho de recuperação como `persist.backup`. Se o arquivo não existir na inicialização, o Herdr confere de novo se ele existe antes do primeiro salvamento ou limpeza. Essas cópias de recuperação de carregamento com falha ficam separadas do histórico normal de snapshots.
+
+O Herdr guarda as três cópias de recuperação mais recentes e só apaga as mais antigas depois de gravar uma nova cópia com segurança. Se a preservação falhar, o salvamento automático e o desligamento deixam o original intacto e registram a falha no log. O Herdr tenta preservar de novo no próximo pedido de salvamento e nunca restaura as cópias automaticamente. Para recuperar uma, pare o servidor afetado, copie o arquivo de recuperação por cima do `session.json` dele e reinicie. As cópias de recuperação não incluem o histórico de tela dos painéis.
+
+## Desligamento e recuperação de snapshots
+
+Em sistemas Linux com systemd-logind, o Herdr escuta o aviso de desligamento do host e pede um pequeno atraso enquanto salva e para. Isso acontece antes de o logind seguir com o desligamento. O sistema operacional limita o atraso. O Herdr não bloqueia o desligamento indefinidamente. Essa proteção não existe sem o logind e não cobre desligamento forçado, queda de energia nem processos encerrados antes de o aviso chegar.
+
+O Herdr também guarda até 48 snapshots de layout em `session-snapshots/`, ao lado de `session.json`, em todas as plataformas. O Herdr copia na hora o primeiro layout salvo. Salvamentos ou limpezas posteriores podem acrescentar um snapshot do layout salvo anterior, no máximo uma vez a cada 15 minutos. O Herdr não duplica snapshots sem mudanças. O intervalo sobrevive a reinícios do servidor, então uma rajada de saídas ou reinícios de painéis não consegue descartar todos os layouts mais antigos. Mudanças recentes podem não estar nos snapshots de recuperação.
+
+O fechamento normal de painéis continua atualizando `session.json`. Não há prompts de recuperação nem restauração automática de snapshots antigos. Para recuperar um layout:
+
+1. Encontre o diretório da sessão afetada com `herdr session list --json`.
+2. Pare esse servidor (`herdr server stop` para a sessão padrão ou `herdr session stop <name>` para uma sessão nomeada).
+3. Guarde uma cópia do `session.json` atual e depois copie o arquivo escolhido de `session-snapshots/` por cima de `session.json`. As datas de modificação dos arquivos mostram quando os snapshots foram feitos.
+4. Inicie a sessão de novo.
+
+Os snapshots contêm o layout e as referências das sessões dos agentes, não processos em execução nem o histórico de tela dos painéis. Trate-os como dados privados da sessão. O Herdr registra no log uma falha ao gravar snapshot, mas essa falha não impede o salvamento da sessão principal.
+
+## Replay do histórico de tela do painel
+
+O histórico de tela do painel restaura o conteúdo recente do terminal depois de um reinício completo do servidor, sem restaurar o processo antigo.
+
+O histórico de tela do painel vem desativado por padrão, porque a saída dos painéis pode incluir segredos, tokens, prompts e saídas de comandos. Ative-o no arquivo de configuração:
+
+```toml
+[experimental]
+pane_history = true
+```
+
+Com ele ativo, o Herdr guarda o histórico salvo dos painéis em `session-history.json`, ao lado de `session.json`. Trate o diretório de configuração e sessão do Herdr como um histórico de terminal.
+
+O Herdr só reproduz o histórico quando ele corresponde exatamente ao layout salvo. Ele ignora o histórico de um layout diferente, inclusive depois de uma recuperação manual de snapshot. Ele também ignora arquivos de histórico antigos sem verificação de layout. O histórico salvo daí em diante já pode ser reproduzido no próximo reinício.
+
+## Restauração da sessão nativa do agente
+
+Alguns agentes conseguem retomar as próprias sessões de conversa. O Herdr pode usar as referências de sessão informadas pelas integrações oficiais para reiniciar painéis de agentes com suporte depois de um reinício do servidor do Herdr.
+
+A restauração da sessão nativa do agente vem ativada por padrão. Desative-a com:
+
+```toml
+[session]
+resume_agents_on_restore = false
+```
+
+O Herdr retoma os painéis que informaram uma referência de sessão nativa por uma integração oficial atual do Herdr e os painéis cujo agente informou o próprio comando de retomada. Veja [Adicionar suporte ao Herdr no seu agente](/pt-br/docs/add-herdr-support/).
+
+Depois que um cliente se anexa e fornece o tamanho do terminal e o contexto do tema, o Herdr retoma os painéis de agente restaurados e elegíveis em todos os workspaces e abas, sem esperar que cada painel receba foco.
+
+A restauração da sessão nativa exige estas versões de integração do Herdr ou mais novas:
+
+| Agente | Versão mínima da integração do Herdr | Comando de retomada |
+| --- | --- | --- |
+| Pi | `2` | `pi --session <path-or-id>` |
+| Antigravity CLI | `1` | `agy --conversation <id>` |
+| OMP | `3` | `omp --resume=<path-or-id>` |
+| Claude Code | `6` | `claude --resume <id>` |
+| Codex | `5` | `codex resume <id>` |
+| Cursor Agent CLI | `1` | `cursor-agent --resume <id>` |
+| Grok CLI | `2` | `grok --resume <id>` |
+| GitHub Copilot CLI | `2` | `copilot --resume=<id>` |
+| Devin CLI | `2` | `devin --resume <id>` |
+| Droid | `2` | `droid --resume <id>` |
+| Kimi Code CLI | `3` | `kimi --session <id>` |
+| Qoder CLI | `2` | `qodercli --resume <id>` |
+| Qwen Code | `1` | `qwen --resume <id>` |
+| Letta Code | `1` | `letta --conversation <id>` ou `letta --conversation default --agent <agent-id>` para `default:<agent-id>` |
+| OpenCode | `5` | `opencode --session <id>` |
+| Kilo Code CLI | `1` | `kilo --session <id>` |
+| Hermes Agent | `2` | `hermes --resume <id>` |
+| MastraCode | `1` | `mastracode --thread <id>` |
+
+Execute `herdr integration status` para conferir as versões das integrações instaladas. Reinstale as integrações desatualizadas com `herdr integration install <agent>`.
+
+Referências de sessão sem suporte, ausentes, inválidas, duplicadas ou obsoletas voltam como shells normais no diretório salvo do painel.
+
+Se a restauração da sessão nativa do agente se aplicar a um painel, o Herdr retoma a sessão do agente em vez de reproduzir o histórico salvo desse painel.
+
+## Handoff ao vivo
+
+O handoff ao vivo serve aos fluxos de atualização e de anexação remota que precisam substituir um servidor do Herdr em execução. Ele pede ao servidor antigo que transfira os painéis ao vivo para o servidor novo, para que os processos dos painéis continuem rodando durante a troca de servidor.
+
+Ao contrário da restauração por snapshot, do replay do histórico de painel e da restauração da sessão nativa do agente, o handoff tenta manter os processos atuais vivos em vez de reconstruir o estado depois que o servidor antigo para.
+
+Um handoff bem-sucedido preserva o estado de sessão de longa duração que pertence ao servidor: os PTYs e os processos dos painéis, a identidade e os metadados duráveis dos agentes e o estado de plugins e sessão de que o servidor substituto precisa. Ele não preserva a coordenação transitória durante a troca. Pedidos de CLI ou de API em andamento, esperas, fluxos de assinatura, sockets de cliente e mensagens entre painéis podem ser interrompidos. Os clientes devem reconectar e tentar de novo.
+
+Servidores Unix atualizados transferem os painéis em lotes e por isso conseguem enviar mais de 64 painéis em um único handoff. O servidor que envia precisa já ter esse suporte. Um servidor antigo em execução ainda impõe o limite de 64 painéis na primeira atualização. Esse limite pode exigir um reinício normal do servidor, o que encerra os processos dos painéis. O envio em lotes não muda a ordem de instalação da atualização nem remove os outros requisitos de compatibilidade do handoff.
+
+O handoff ao vivo é experimental e opcional:
+
+```bash
+herdr update --handoff
+herdr --remote workbox --handoff
+```
+
+O `herdr update` sem opções instala o novo cliente e mantém rodando os servidores da geração 1 do endpoint. O `herdr --remote workbox` sem opções também mantém rodando um servidor remoto compatível, mesmo com versões diferentes. Só é preciso parar o servidor na atualização única a partir de um servidor anterior à geração 1. Use `--handoff` quando quiser explicitamente substituir um servidor em execução com suporte sem perder os processos dos painéis dele.
+
+`herdr update --handoff` só se aplica a instalações gerenciadas pelo atualizador do próprio Herdr. Em instalações via Homebrew, mise e Nix, quem atualiza é o gerenciador de pacotes, então `herdr update` fica desativado nelas e não consegue fazer o handoff ao vivo.
