@@ -32,6 +32,11 @@ class DocsTranslationParityTests(unittest.TestCase):
                 "# 指南\n\n## 安装\n\n### 验证\n",
                 encoding="utf-8",
             )
+            (root / "pt-br").mkdir()
+            (root / "pt-br" / "guide.mdx").write_text(
+                "# Guia\n\n## Instalação\n\n### Verificação\n",
+                encoding="utf-8",
+            )
 
             self.assertEqual(check_docs_translation_parity(root), [])
 
@@ -52,6 +57,11 @@ class DocsTranslationParityTests(unittest.TestCase):
                 "# CLI 参考\n\n## 启动\n\n## Shell 补全\n",
                 encoding="utf-8",
             )
+            (root / "pt-br").mkdir()
+            (root / "pt-br" / "cli-reference.mdx").write_text(
+                "# Referência da CLI\n\n## Inicialização\n\n## Autocompletar do shell\n",
+                encoding="utf-8",
+            )
 
             errors = check_docs_translation_parity(root)
 
@@ -67,6 +77,8 @@ class DocsTranslationParityTests(unittest.TestCase):
             (root / "guide.mdx").write_text("# Guide\n", encoding="utf-8")
             (root / "ja" / "old.mdx").write_text("# Old\n", encoding="utf-8")
             (root / "zh-cn" / "guide.mdx").write_text("# 指南\n", encoding="utf-8")
+            (root / "pt-br").mkdir()
+            (root / "pt-br" / "guide.mdx").write_text("# Guia\n", encoding="utf-8")
 
             errors = check_docs_translation_parity(root)
 
