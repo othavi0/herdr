@@ -40,7 +40,7 @@ Herdr. Trate um plugin como qualquer extensão que você adiciona a um editor, a
 agente de programação.
 
 Instale ou vincule plugins só de autores e repositórios em que você confia. Antes de
-instalar ou vincular um plugin, leia por cima o manifest `herdr-plugin.toml` e nos scripts
+instalar ou vincular um plugin, leia por cima o manifest `herdr-plugin.toml` e os scripts
 ou binários que ele roda. Em terminais interativos, `herdr plugin install` mostra uma prévia da origem e
 dos comandos que vai rodar, para você revisar antes de
 confirmar. Use `--yes` para
@@ -190,7 +190,7 @@ herdr plugin log list --plugin example.layout
 
 `plugin install` aceita só a forma abreviada do GitHub, como
 `owner/repo/subdir`. Ele clona com `git`, mostra uma prévia em terminais
-interativos, roda os comandos de build aceitos, guarda o checkout nos
+interativos, roda os comandos de build compatíveis, guarda o checkout nos
 dados de plugins gerenciados pelo Herdr e o registra. Use `--yes` para instalações
 não interativas. Reinstalar um plugin gerenciado pelo GitHub substitui aquele checkout gerenciado.
 Os plugins instalados e vinculados, junto com o estado de ativação, são globais para o
@@ -234,14 +234,14 @@ de build, mas não instala toolchains que faltam.
 
 Os comandos `[[startup]]` rodam uma vez para cada plugin ativado depois que o Herdr restaura a
 sessão e o socket da API dele fica pronto. Eles rodam de novo quando um novo servidor assume
-durante um handoff ao vivo, mas não quando um cliente se anexa, quando você recarrega a configuração
-ou quando você vincula ou ativa um plugin. O Herdr os inicia assincronamente e registra a
+durante um handoff ao vivo, mas não quando um cliente se anexa, quando a configuração é recarregada
+ou quando um plugin é vinculado ou ativado. O Herdr os inicia assincronamente e registra a
 conclusão deles no log normal de comandos de plugins. Uma falha na inicialização não para o
 servidor.
 
 Os hooks de inicialização são comandos que rodam uma única vez para inicializar o plugin, não daemons
 supervisionados. Um hook deve restaurar o estado do próprio plugin, chamar as APIs do Herdr necessárias
-e sair. Por exemplo, um plugin pode salvar uma visão declarativa de Agent em
+e sair. Por exemplo, um plugin pode salvar uma visão de agentes declarativa em
 `HERDR_PLUGIN_STATE_DIR` e depois ler e reaplicar essa visão no hook de inicialização.
 
 Os hooks de inicialização recebem o ambiente de execução normal do plugin e
@@ -280,7 +280,7 @@ PowerShell, Bash ou outro runtime. O transporte cru do socket por trás de
 e clientes Windows se conectam a um named pipe. Chamadas à CLI por
 `HERDR_BIN_PATH` evitam essa diferença de transporte. Veja a
 [Referência da CLI](/pt-br/docs/cli-reference/) para os comandos disponíveis e a
-[Socket API](/pt-br/docs/socket-api/) para o formato das requisições cruas.
+[API de socket](/pt-br/docs/socket-api/) para o formato das requisições cruas.
 
 ## Painéis
 

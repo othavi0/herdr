@@ -8,6 +8,7 @@ O Herdr foi feito para rodar mais de um agente de programação ao mesmo tempo. 
 Para coordenar agentes a partir de scripts ou de outro agente, veja [Automação de agentes](/pt-br/docs/agent-automation/).
 
 ## Agentes com suporte
+
 A detecção automática funciona sem configuração para os agentes de programação mais comuns. A tabela mostra qual sinal determina `idle`, `working` e `blocked` em cada um.
 
 | Agente | Autoridade de estado | Papel da integração |
@@ -43,11 +44,11 @@ Primeiro, o Herdr detecta o processo em primeiro plano de cada painel. Depois di
 
 Em agentes com hooks de ciclo de vida completos, a integração é a autoridade quando está instalada e informando ativamente o estado do painel em execução. O Herdr usa esses informes dos hooks para `idle`, `working`, `blocked` e para a identidade da sessão. Ele não roda também o fallback do manifest de tela para essa mesma autoridade de ciclo de vida. Assim não existem duas fontes de verdade concorrentes.
 
-Em agentes sem hooks de ciclo de vida completos, o Herdr identifica o processo em primeiro plano e lê o snapshot da tela ao vivo na parte inferior do buffer. Ele compara esse snapshot com manifests TOML para classificar `idle`, `working` e `blocked`. Nos agentes que emitem essas sequências, os manifests também podem usar o título do terminal e as sequências de progresso (OSC) como evidência de detecção. Quando essa evidência não existe, as regras de tela fazem a detecção sozinhas.
+Em agentes sem hooks de ciclo de vida completos, o Herdr identifica o processo em primeiro plano e lê o snapshot da tela ao vivo na parte inferior do buffer. Ele compara esse snapshot com manifests TOML para classificar `idle`, `working` e `blocked`. Nos agentes que emitem essas sequências, os manifests também podem reconhecer as sequências de título do terminal e de progresso (OSC) como evidência de detecção. Quando essa evidência não existe, as regras de tela fazem a detecção sozinhas.
 
 O snapshot da tela vem da parte inferior recente do buffer do painel, não da área visível rolada. Se você rolar para cima no Herdr, a detecção continua seguindo a interface ao vivo do agente, lá embaixo.
 
-As integrações marcadas só com "sessão" na tabela acima não são autoridades de ciclo de vida, e isso é intencional. Elas fornecem a identidade nativa da sessão para a restauração, mas os hooks delas não cobrem o ciclo de vida inteiro. Eles podem perder resultados de aprovação de permissão, interrupções com Esc ou outras transições. Nesses agentes, o Herdr continua usando a detecção pelo manifest de tela.
+As integrações marcadas como sessão (`session`) na tabela acima não são autoridades de ciclo de vida, e isso é intencional. Elas fornecem a identidade nativa da sessão para a restauração, mas os hooks delas não cobrem o ciclo de vida inteiro. Eles podem perder resultados de aprovação de permissão, interrupções com Esc ou outras transições. Nesses agentes, o Herdr continua usando a detecção pelo manifest de tela.
 
 ## VMs e wrappers de sandbox
 
@@ -143,9 +144,9 @@ herdr pane report-metadata w1:p1 \
   --token summary=indexing
 ```
 
-`state` controla esperas, notificações e a agregação de estado. O token `summary` serve só para exibição, e você pode usá-lo como `$summary` em uma linha de agente da barra lateral.
+`state` controla esperas, notificações e a agregação de estado. O token `summary` serve só para exibição, e você pode usá-lo como `$summary` em uma linha de Agent da barra lateral.
 
-As linhas de agente da barra lateral também podem incluir `terminal_title` ou `terminal_title_stripped`. Nenhum dos dois aparece nas linhas padrão. O primeiro mostra o título de terminal OSC 0/2 mais recente, normalizado por segurança. O segundo remove um glifo inicial reconhecido de atividade ou spinner e o espaço em branco que o segue. O Herdr mantém esses valores no servidor. Eles se perdem em um reinício a frio e são independentes dos títulos de metadados e do estado semântico do agente. Por isso, a animação do spinner pode atualizar o título bruto sem gerar uma atualização do painel quando o texto sem o glifo continua igual.
+As linhas de Agent da barra lateral também podem incluir `terminal_title` ou `terminal_title_stripped`. Nenhum dos dois aparece nas linhas padrão. O primeiro mostra o título de terminal OSC 0/2 mais recente, normalizado por segurança. O segundo remove um glifo inicial reconhecido de atividade ou spinner e o espaço em branco que o segue. O Herdr mantém esses valores no servidor. Eles se perdem em um reinício a frio e são independentes dos títulos de metadados e do estado semântico do agente. Por isso, a animação do spinner pode atualizar o título bruto sem gerar uma atualização do painel quando o texto sem o glifo continua igual.
 
 ## Anexar direto a um agente
 

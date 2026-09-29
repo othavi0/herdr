@@ -11,12 +11,12 @@ não é um catálogo revisado.
 
 O [marketplace](/plugins/) lista repositórios públicos marcados com o tópico
 `herdr-plugin` do GitHub quando a branch padrão deles contém pelo menos um
-`herdr-plugin.toml` com metadados obrigatórios legíveis. Busque pelos metadados do repositório
+`herdr-plugin.toml` cujos metadados obrigatórios o Herdr consegue interpretar. Busque pelos metadados do repositório
 ou do plugin e ordene os cards de repositório por popularidade, atividade recente
 ou pelos mais novos. Cada card leva ao repositório de origem e lista todos os plugins
 encontrados dentro dele.
 
-A descoberta é automática e ninguém revisa os plugins. Estar na lista significa que um repositório se marcou,
+A descoberta é automática e não passa por revisão. Estar na lista significa que um repositório se marcou,
 não que o Herdr o avaliou. Por isso, siga as
 [orientações de confiança](/pt-br/docs/plugins/#confiança-e-segurança) antes de
 instalar qualquer coisa.
@@ -37,8 +37,8 @@ O comando funciona com um repositório público do GitHub que tenha um manifest
 ## Coloque o seu plugin na lista
 
 Adicione o tópico `herdr-plugin` do GitHub a um repositório público e coloque um ou mais
-manifests `herdr-plugin.toml` com metadados obrigatórios legíveis na branch
-padrão. Os manifests podem ficar na raiz ou em subdiretórios. O marketplace usa
+manifests `herdr-plugin.toml` na branch padrão, com metadados obrigatórios
+que o Herdr consegue interpretar. Os manifests podem ficar na raiz ou em subdiretórios. O marketplace usa
 um card por repositório e lista cada manifest válido como um plugin que você instala
 separadamente. O índice se atualiza automaticamente a cada 30 minutos e
 varre de novo os repositórios quando o head da branch padrão deles muda.

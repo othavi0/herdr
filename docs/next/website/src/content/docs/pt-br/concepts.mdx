@@ -15,7 +15,7 @@ Um workspace contém abas e painéis. Na barra lateral, o workspace mostra o est
 
 Uma aba é um layout dentro de um workspace. Use abas para separar visões como `agents`, `logs`, `server` ou `review`.
 
-Você acessa as abas pela CLI e pela API de socket.
+Você pode referenciar as abas pela CLI e pela API de socket.
 
 ## Painel
 
@@ -43,7 +43,7 @@ Os estados de agente são:
 | Estado | Significado |
 | --- | --- |
 | `blocked` | O agente precisa de uma entrada, de uma aprovação ou de uma decisão. |
-| `working` | O agente está rodando. |
+| `working` | O agente está rodando ativamente. |
 | `done` | O agente terminou e você ainda não olhou para ele. |
 | `idle` | O agente terminou ou está esperando, e você já viu. |
 | `unknown` | O Herdr não consegue classificar o estado com confiança. |
@@ -84,6 +84,6 @@ herdr server stop
 
 O Herdr tem o modo de terminal, o modo de prefixo e o modo de navegação.
 
-O modo de terminal envia as teclas ao painel em foco. O modo de prefixo espera uma ação do Herdr depois da tecla de prefixo. O modo de navegação é a tela persistente de navegação entre workspaces.
+O modo de terminal envia as teclas ao painel em foco. O modo de prefixo espera uma ação do Herdr depois da tecla de prefixo. O modo de navegação é a interface persistente de navegação entre workspaces.
 
 Pressione a tecla de prefixo, `ctrl+b` por padrão, e depois uma tecla de ação, como `c` para uma aba nova ou `w` para navegar entre workspaces. Veja [Teclado](/pt-br/docs/keyboard/) se a ideia de prefixo for nova para você.

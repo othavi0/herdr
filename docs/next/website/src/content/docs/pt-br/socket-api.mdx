@@ -92,7 +92,7 @@ herdr pane read w1:p2 --source recent --lines 50
 
 ## Métodos crus
 
-Os nomes dos métodos do socket usam notação com ponto:
+Os nomes dos métodos crus do socket usam notação com ponto:
 
 | Área | Métodos |
 | --- | --- |
@@ -156,7 +156,7 @@ o Herdr retorna esse painel. Sem ele, o Herdr retorna o painel ativo
 em foco.
 
 `pane.input.set` define `right_click` como `herdr` ou `pane` para um painel. `herdr`
-é o padrão. Com `pane`, o Herdr repassa sem alteração os gestos de segurar e arrastar com o botão direito
+é o padrão. Com `pane`, o Herdr repassa os gestos de segurar e arrastar com o botão direito sem modificador
 quando o aplicativo pede ao terminal os eventos de mouse. Caso contrário, o Herdr abre
 o próprio menu do painel. Clicar com o botão direito na moldura do painel sempre abre o menu do Herdr.
 `pane.split` aceita o mesmo valor opcional de `right_click` para o painel recém-criado.
@@ -368,8 +368,8 @@ Os comandos de worktree também emitem eventos de ciclo de vida. `worktree.creat
 
 `agent.view.set` instala uma projeção declarativa e temporária para a visão nativa
 Agents. O Herdr reavalia a projeção sempre que os fatos dos agentes ou o contexto atual da
-UI mudam. Ela controla a barra lateral expandida e recolhida, a lista Agents no
-celular, os alvos de mouse, o foco por índice e a navegação para o Agent seguinte e anterior. Ela
+UI mudam. Ela controla a barra lateral expandida e recolhida, a lista Agents da
+visualização mobile, os alvos de mouse, o foco por índice e a navegação para o Agent seguinte e anterior. Ela
 não muda `agent.list`, notificações, detecção nem as contagens globais de atenção.
 
 Mostre os agentes do Space apresentado no momento ou os agentes que pedem atenção
@@ -457,8 +457,8 @@ registro `plugins.json` ao lado de `session.json` em `plugin.link`,
 `plugin.unlink`, `plugin.enable` e `plugin.disable`. As CLIs
 `herdr plugin install` e `herdr plugin link` também gravam o mesmo registro
 quando o Herdr não está rodando, e a inicialização o carrega automaticamente. Na inicialização,
-o Herdr relê cada manifest do caminho original. Se o arquivo não existir ou não
-puder ser lido, o Herdr mantém a entrada com um campo `warnings`, para que `plugin.list` a mostre.
+o Herdr relê cada manifest do caminho original. Se o arquivo não existir ou o parse
+dele falhar, o Herdr mantém a entrada com um campo `warnings`, para que `plugin.list` a mostre.
 
 O Herdr valida os valores `on` dos hooks de evento contra os nomes de evento conhecidos no momento do vínculo.
 Um nome desconhecido não impede o vínculo, mas as informações do plugin retornadas
@@ -650,6 +650,7 @@ comportamento portável no Windows. Clientes que usam o socket cru precisam usar
 forma de socket local nativa da plataforma.
 
 ## Informe de estado do agente
+
 As integrações informam o estado do agente com `pane.report_agent`.
 
 ```json
@@ -747,7 +748,7 @@ Use `pane.report_metadata` quando um hook do usuário quer personalizar a aprese
 
 Informes de metadados servem só para exibição. Metadados válidos podem sobrescrever o título do painel, o nome exibido do agente, os rótulos de estado visíveis e tokens nomeados arbitrários. `working`, `blocked`, `idle`, esperas, notificações e o estado agregado continuam vindo do estado semântico. A restauração de sessão nativa vem das referências de sessão oficiais guardadas. `agent` é uma proteção opcional dos campos de apresentação contra o rótulo de agente que vale como referência. `applies_to_source` protege os campos de apresentação da mesma forma, contra a source da autoridade de ciclo de vida ativa. Essas proteções não valem para patches de token. Quem informa tokens cuida de limpá-los e de renovar o TTL. Use `display_agent` para mudar o nome visível. As chaves de `state_labels` precisam ser `idle`, `working`, `blocked`, `done` ou `unknown`.
 
-Mapas de token são patches por recurso. Uma string define uma chave, `null` do JSON limpa a chave e chaves omitidas ficam como estão. A última atualização aceita vence. O TTL opcional vale de forma independente para as chaves de token atualizadas por aquele informe. As respostas de get e list de painel e de agente expõem os tokens do painel, e as linhas da barra lateral Agent podem mostrá-los como `$name`. Um informe pode citar no máximo 16 chaves de token, e um painel ou workspace pode guardar no máximo 32 chaves. Nomes de token têm de 1 a 32 letras ASCII, dígitos, sublinhados ou hifens.
+Mapas de token são patches por recurso. Uma string define uma chave, `null` do JSON limpa a chave e chaves omitidas ficam como estão. A última atualização aceita vence. O TTL opcional vale de forma independente para as chaves de token atualizadas por aquele informe. As respostas de get e list de painel e de agente expõem os tokens do painel, e as linhas Agent da barra lateral podem mostrá-los como `$name`. Um informe pode citar no máximo 16 chaves de token, e um painel ou workspace pode guardar no máximo 32 chaves. Nomes de token têm de 1 a 32 letras ASCII, dígitos, sublinhados ou hifens.
 
 Tokens de workspace seguem o mesmo contrato:
 
@@ -755,7 +756,7 @@ Tokens de workspace seguem o mesmo contrato:
 {"id":"req_3","method":"workspace.report_metadata","params":{"workspace_id":"w1","source":"user:jj","tokens":{"jj_status":"2 changes","old":null},"ttl_ms":5000}}
 ```
 
-As respostas de get e list de workspace expõem o mapa `tokens` resultante, e as linhas da barra lateral Space podem mostrar valores como `$jj_status`. Mudanças e expiração de TTL emitem `workspace.metadata_updated` com o snapshot mais recente do workspace. Esse evento de metadados está disponível para assinantes da API, mas não chama os hooks de evento de plugins.
+As respostas de get e list de workspace expõem o mapa `tokens` resultante, e as linhas Space da barra lateral podem mostrar valores como `$jj_status`. Mudanças e expiração de TTL emitem `workspace.metadata_updated` com o snapshot mais recente do workspace. Esse evento de metadados está disponível para assinantes da API, mas não chama os hooks de evento de plugins.
 
 O Herdr normaliza o texto de apresentação antes de guardá-lo. Ele remove espaços nas pontas, remove caracteres de controle e corta `title`, `display_agent`, cada rótulo de estado e os valores de token em 80 caracteres. Um valor de token vazio depois da normalização limpa aquela chave.
 
@@ -948,6 +949,6 @@ ou que estouram o tempo limite também são informadas sem encerrar a conexão. 
 anteriores à geração de endpoint 1 precisam de uma última atualização.
 
 O protocolo binário numerado continua existindo para operações internas e da mesma instalação,
-incluindo o attach direto ao terminal e o live handoff. Confira `ping` ou `herdr status`
+incluindo a anexação direta ao terminal e o live handoff. Confira `ping` ou `herdr status`
 antes de usar essas operações entre builds diferentes. Clientes da API JSON devem
 ignorar campos desconhecidos e tratar métodos sem suporte como erros normais.

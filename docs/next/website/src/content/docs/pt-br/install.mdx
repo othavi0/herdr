@@ -135,7 +135,7 @@ herdr channel set stable
 
 Em instalações diretas, trocar de canal consulta o canal escolhido e instala o binário mais recente dele. Se essa atualização falhar, execute `herdr update` para tentar de novo a partir do canal configurado.
 
-As builds preview são prereleases do GitHub publicadas com frequência a partir do branch de desenvolvimento atual. Elas servem para quem quer as correções antes da próxima versão estável, mas podem ter regressões. Instalações via Homebrew, mise e Nix não usam o canal preview.
+As builds preview são prereleases do GitHub publicadas regularmente a partir do branch de desenvolvimento atual. Elas servem para quem quer as correções antes da próxima versão estável, mas podem ter regressões. Instalações via Homebrew, mise e Nix não usam o canal preview.
 
 O canal estável é o recomendado para o uso normal no Windows. O preview recebe correções antes, mas pode ter regressões. Ative-o só se aceitar esse risco em troca das correções. Instalações preview já existentes no Windows continuam no preview até você trocá-las explicitamente. Se uma build preview antiga recusar `herdr channel set stable`, execute `herdr update` uma vez no preview e depois tente a troca de canal de novo.
 
@@ -155,4 +155,4 @@ O handoff ao vivo não se aplica a atualizações pelos gerenciadores de pacotes
 
 ## Requisitos
 
-Há binários do canal estável para Linux, macOS e Windows x86_64. Veja [Suporte a Windows](/pt-br/docs/windows-beta/) para ver os fluxos com suporte e as limitações conhecidas. O Windows ARM64 roda a build x86_64 sob a emulação do Windows.
+Há binários do canal estável para Linux, macOS e Windows x86_64. Veja [Suporte ao Windows](/pt-br/docs/windows-beta/) para ver os fluxos com suporte e as limitações conhecidas. O Windows ARM64 roda a build x86_64 sob a emulação do Windows.

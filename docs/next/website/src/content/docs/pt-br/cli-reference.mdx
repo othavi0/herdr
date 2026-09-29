@@ -329,7 +329,7 @@ O Herdr normaliza o texto dos metadados antes de guardar. Ele apara os espaços 
 
 `--token` aplica um patch a um valor de exibição nomeado. `--clear-token` remove um. Tokens não mencionados ficam como estão. Os tokens de painel ficam disponíveis nas linhas de Agent da barra lateral como `$name`. Os tokens de workspace ficam disponíveis nas linhas de Space. O TTL vale de forma independente para cada chave de token atualizada naquela chamada.
 
-`--source` e `--applies-to-source` precisam ter até 80 caracteres e só podem conter letras ASCII, dígitos, dois-pontos, ponto, sublinhado e hífen. `--ttl-ms` faz os metadados expirarem sozinhos e precisa ficar entre `1` e `86400000` milissegundos. Omita a flag para metadados que devem ficar até serem substituídos, limpos ou até o painel fechar. `--seq` permite que o Herdr ignore informes antigos da mesma `--source`. A API aceita informes antigos, mas o estado do painel os ignora. Um painel ou workspace aceita informes de tokens com sequência de no máximo 32 fontes distintas durante o ciclo de vida dele. Limpar ou expirar não libera essas vagas de fonte.
+`--source` e `--applies-to-source` precisam ter até 80 caracteres e só podem conter letras ASCII, dígitos, dois-pontos, ponto, sublinhado e hífen. `--ttl-ms` faz os metadados expirarem sozinhos e precisa ficar entre `1` e `86400000` milissegundos. Omita a flag para metadados que devem ficar até serem substituídos, limpos ou até o painel fechar. `--seq` permite que o Herdr ignore informes desatualizados da mesma `--source`. A API aceita informes desatualizados, mas o estado do painel os ignora. Um painel ou workspace aceita informes de tokens com sequência de no máximo 32 fontes distintas durante o ciclo de vida dele. Limpar ou expirar não libera essas vagas de fonte.
 
 ## Agentes
 
@@ -472,7 +472,7 @@ herdr plugin enable <plugin_id>
 herdr plugin disable <plugin_id>
 ```
 
-`plugin install` aceita só a forma abreviada do GitHub, como `ogulcancelik/herdr-plugin-examples/worktree-bootstrap`. Ele usa o `git`, mostra uma prévia de confiança em terminais interativos, roda os comandos de build aceitos no manifest e guarda as instalações do GitHub em um diretório gerenciado pelo Herdr. Use `--yes` para instalações não interativas. Reinstalar um plugin gerenciado pelo GitHub substitui aquele checkout gerenciado. O Herdr recusa instalar por cima de um plugin vinculado localmente. Os manifests de plugin precisam declarar `min_herdr_version`. A instalação e o vínculo falham quando o plugin exige um binário do Herdr mais novo. `plugin list` mostra texto legível por padrão. Passe `--json` para a resposta crua da API.
+`plugin install` aceita só a forma abreviada do GitHub, como `ogulcancelik/herdr-plugin-examples/worktree-bootstrap`. Ele usa o `git`, mostra uma prévia de confiança em terminais interativos, roda os comandos de build compatíveis do manifest e guarda as instalações do GitHub em um diretório gerenciado pelo Herdr. Use `--yes` para instalações não interativas. Reinstalar um plugin gerenciado pelo GitHub substitui aquele checkout gerenciado. O Herdr recusa instalar por cima de um plugin vinculado localmente. Os manifests de plugin precisam declarar `min_herdr_version`. A instalação e o vínculo falham quando o plugin exige um binário do Herdr mais novo. `plugin list` mostra texto legível por padrão. Passe `--json` para a resposta crua da API.
 
 A instalação e o estado de ativação dos plugins são globais para o usuário atual. Um plugin instalado, vinculado, ativado ou desativado em uma sessão do Herdr fica disponível na hora, com o mesmo estado, em todas as sessões.
 
@@ -561,8 +561,8 @@ Esses significados valem para leituras. Só em `pane wait-output`, tanto `recent
 | --- | --- |
 | `HERDR_CONFIG_PATH` | Sobrescreve o caminho do arquivo de configuração. |
 | `HERDR_SESSION` | Seleciona uma sessão nomeada para os comandos da CLI. |
-| `HERDR_SOCKET_PATH` | Sobrescreve o caminho do socket, em baixo nível. |
-| `HERDR_PROCESS_DETECTION` | Estratégia de detecção de processos no Linux: `native` (padrão) ou `child-groups`, que só vale quando você a escolhe. |
+| `HERDR_SOCKET_PATH` | Sobrescrita de baixo nível do caminho do socket. |
+| `HERDR_PROCESS_DETECTION` | Estratégia de detecção de processos no Linux: `native` (padrão) ou `child-groups`, que você precisa ativar explicitamente. |
 | `HERDR_ENV` | Vale `1` dentro dos processos de painel gerenciados pelo Herdr. |
 | `HERDR_PANE_ID` | ID público do painel para o processo do painel em execução. |
 | `HERDR_TAB_ID` | ID público da aba para o processo do painel em execução. |

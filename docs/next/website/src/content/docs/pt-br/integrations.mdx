@@ -53,7 +53,7 @@ herdr integration uninstall antigravity-cli
 herdr integration uninstall grok
 ```
 
-O Herdr salva as configurações das integrações atomicamente no Linux e no macOS e também para arquivos novos. No Windows, os arquivos existentes mantêm as permissões porque o Herdr faz primeiro um backup e depois atualiza o arquivo no lugar. Se o Windows informar um backup, feche o agente e inspecione a configuração antes de tentar de novo. Descarte um `.herdr-backup.pending` inacabado, sem restaurá-lo, e só depois de conferir a configuração. Se precisar, restaure o conteúdo de um `.herdr-backup` completo para o arquivo existente. Se o arquivo não existir, defina primeiro as permissões que ele deveria ter. Em seguida, confira a configuração e remova o backup.
+O Herdr salva as configurações das integrações atomicamente no Linux e no macOS e também para arquivos novos. No Windows, os arquivos existentes mantêm as permissões porque o Herdr faz primeiro um backup e depois atualiza o arquivo no lugar. Se o Windows informar um backup, feche o agente e inspecione a configuração antes de tentar de novo. Descarte um `.herdr-backup.pending` inacabado, sem restaurá-lo, e só depois de conferir a configuração. Ou, se precisar, restaure o conteúdo de um `.herdr-backup` completo para o arquivo existente. Se o arquivo não existir, defina primeiro as permissões que ele deveria ter. Em seguida, confira a configuração e remova o backup.
 
 ## Como o Herdr usa as integrações
 
@@ -88,7 +88,7 @@ O Herdr grava a extensão incluída em:
 ~/.pi/agent/extensions/herdr-agent-state.ts
 ```
 
-Se `PI_CODING_AGENT_DIR` estiver definida, o Herdr grava em `$PI_CODING_AGENT_DIR/extensions/herdr-agent-state.ts`. O Herdr cria o diretório de extensões quando o diretório do agente Pi já existe. A desinstalação remove só esse arquivo de extensão.
+Se `PI_CODING_AGENT_DIR` estiver definida, o Herdr grava em vez disso em `$PI_CODING_AGENT_DIR/extensions/herdr-agent-state.ts`. O Herdr cria o diretório de extensões quando o diretório do agente Pi já existe. A desinstalação remove só esse arquivo de extensão.
 
 ## OMP
 
@@ -198,13 +198,13 @@ Instale o plugin do OpenCode:
 herdr integration install opencode
 ```
 
-A integração funciona com o OpenCode V1 `1.18.29` ou mais recente e com o OpenCode V2 (testado com a beta `19242`). O diretório de configuração do OpenCode já precisa existir. Nesse diretório de configuração, o Herdr instala o entrypoint do servidor em `~/.config/opencode/plugins/herdr-agent-state.js`, o plugin de TUI compartilhado em `herdr-tui-session.js` e um entrypoint de TUI da V2 em `herdr-opencode/tui.js`.
+A integração funciona com o OpenCode V1 `1.18.29` ou mais recente e com o OpenCode V2 (testado com a beta `19242`). O diretório de configuração do OpenCode já precisa existir. Nesse diretório de configuração, o Herdr instala o ponto de entrada do servidor em `~/.config/opencode/plugins/herdr-agent-state.js`, o plugin de TUI compartilhado em `herdr-tui-session.js` e um ponto de entrada de TUI da V2 em `herdr-opencode/tui.js`.
 
 A instalação registra o plugin de TUI da V1 em `tui.jsonc` e o plugin de TUI da V2 em `cli.json`. As outras preferências e plugins continuam como estão. Um registro existente da V1 em `tui.json` também conta como instalado, e o Herdr o reutiliza sem criar `tui.jsonc`. A desinstalação remove o registro do Herdr dos dois arquivos de configuração da TUI e mantém os arquivos e as outras preferências. Se o OpenCode ainda tiver preferências de TUI da V1 para importar (`tui.json` ou `kv.json`), o Herdr adia o registro para que a migração da primeira execução possa rodar. Nesse caso, inicie o `opencode2` uma vez e reinstale a integração depois. Caso contrário, o Herdr cria `cli.json` com o registro do plugin. Reinicie a TUI do OpenCode depois da instalação. A desinstalação remove os arquivos de plugin gerenciados e as entradas de configuração deles.
 
 Na V2, o informe do ciclo de vida roda na TUI local do painel, que associa os eventos à sessão raiz selecionada mesmo quando vários painéis compartilham um único servidor do OpenCode. A conclusão e a interrupção encerram o estado trabalhando. Pedidos de permissão pendentes, formulários pendentes e execuções que falharam mantêm o painel bloqueado. Os clientes Mini e headless da V2 não rodam o plugin de TUI e, por isso, não oferecem esse informe do ciclo de vida.
 
-Na V1, o informe pela TUI segue a sessão selecionada do painel e as sessões descendentes dela. O painel fica trabalhando enquanto qualquer uma delas estiver ocupada ou tentando de novo, e bloqueado enquanto qualquer uma tiver uma permissão ou pergunta pendente. Ao anexar, o Herdr carrega a atividade existente. Pedidos de ferramenta cancelados não voltam a bloquear depois de reconectar. Navegar por um subagente mantém a família da sessão original, enquanto anexar direto a uma sessão filha acompanha a subárvore dessa filha, e não as irmãs dela.
+Na V1, o informe pela TUI segue a sessão selecionada do painel e as sessões descendentes dela. O painel fica trabalhando enquanto qualquer uma delas estiver ocupada ou tentando de novo, e bloqueado enquanto qualquer uma tiver uma permissão ou pergunta pendente. Anexar carrega a atividade existente. Pedidos de ferramenta cancelados não voltam a bloquear depois de reconectar. Navegar por um subagente mantém a família da sessão original, enquanto anexar direto a uma sessão filha acompanha a subárvore dessa filha, e não as irmãs dela.
 
 O `opencode run` e o `opencode --mini` locais da V1 mantêm os hooks legados do servidor. Esta mudança não adiciona informe do ciclo de vida local do painel aos clientes Mini e headless. Depois de atualizar a integração, reinicie os servidores compartilhados do OpenCode e também as TUIs deles, para que o informe antigo vindo do servidor não sobrescreva o estado local do painel.
 
@@ -266,7 +266,7 @@ O Herdr retoma as sessões salvas do Qwen Code com `qwen --resume <id>`.
 
 ## Letta Code
 
-A instalação da integração do Letta Code é experimental e só funciona pela CLI. Ela não aparece na tela de integrações de Settings nem na API JSON de integrações. `herdr integration status` a mostra como `letta (experimental)`. A detecção do agente e `herdr agent start --kind letta` funcionam independentemente dessa restrição de instalação.
+A instalação da integração do Letta Code é experimental e só funciona pela CLI. Ela não aparece na tela de integrações de Settings nem na API JSON de integrações. `herdr integration status` a mostra como `letta (experimental)`. A detecção do agente e `herdr agent start --kind letta` têm suporte independente dessa restrição de instalação.
 
 Instale o hook do Letta Code:
 

@@ -50,7 +50,7 @@ Você também pode abrir o menu global no Herdr e escolher `reload config`.
 
 O recarregamento aplica a maioria das configurações de interface sem reiniciar os painéis. Configurações lidas só na inicialização ainda exigem reinício.
 
-Temas, layouts da barra lateral, comportamento de cópia e outras configurações de apresentação vêm da configuração local do cliente, inclusive ao visualizar uma máquina por SSH. Padrões de painel, worktrees, integrações e comandos personalizados pertencem ao servidor onde os painéis rodam. A ação `reload config` da interface recarrega as configurações locais do cliente e a configuração do servidor selecionado. Os atalhos locais também recarregam. Com `--remote-keybindings server`, o Herdr usa os atalhos do servidor selecionado.
+Temas, layouts da barra lateral, comportamento de cópia e outras configurações de apresentação vêm da configuração local do cliente, inclusive ao visualizar uma máquina por SSH. Padrões de painel, worktrees, integrações e comandos personalizados pertencem ao servidor onde os painéis rodam. A ação `reload config` da interface recarrega as configurações locais do cliente e a configuração do servidor selecionado. Os atalhos locais também recarregam. Com `--remote-keybindings server`, o Herdr usa em vez deles os atalhos do servidor selecionado.
 
 ## Tamanho do terminal headless
 
@@ -125,7 +125,7 @@ Com essa opção ativa, `herdr --remote` grava uma configuração SSH temporári
 
 Para uma introdução guiada ao prefixo e uma configuração sem prefixo já testada, veja [Teclado](/pt-br/docs/keyboard/).
 
-O Herdr tem um modo de prefixo parecido com o do tmux. O prefixo padrão é `ctrl+b`. As strings de atalho são explícitas. `prefix+n` significa pressionar o prefixo configurado e depois `n`. `ctrl+alt+n` é um atalho direto no modo terminal.
+O Herdr tem um modo de prefixo parecido com o do tmux. O prefixo padrão é `ctrl+b`. As strings de atalho são explícitas. `prefix+n` significa pressionar o prefixo configurado e depois `n`. `ctrl+alt+n` é um atalho direto no modo de terminal.
 
 Uma pequena substituição de atalhos fica assim:
 
@@ -221,7 +221,7 @@ No Windows, use em vez disso um comando de shell como `command = "powershell.exe
 
 `type = "shell"` roda desanexado em segundo plano.
 
-`type = "plugin_action"` invoca o id de uma ação de plugin instalado. Use o id qualificado quando os ids de ação não forem únicos entre plugins:
+`type = "plugin_action"` invoca o id de uma ação de plugin instalado. Use o id qualificado quando os ids de ação não forem únicos globalmente:
 
 ```toml
 [[keys.command]]
@@ -417,7 +417,7 @@ rows = [
 ]
 ```
 
-A primeira regra que casa vence. Os campos de estilo que ela especifica substituem os padrões da ocorrência, e os campos não especificados herdam esses padrões. Se nenhuma regra casar, os padrões continuam valendo. A comparação usa o valor completo do token, antes do corte para exibição. Defina `hide = true` em uma regra para remover o token que casou e o separador dele. Linhas sem nenhum token restante também somem. Por exemplo, `{ token = "machine", fg = "#61afef", rules = [{ equals = "Local", hide = true }] }` esconde o token da máquina quando o rótulo é exatamente `Local`. Isso compara o rótulo, não o tipo de conexão. Com `hide = false` ou sem `hide`, o token continua visível. Uma regra sem substituições também encerra a busca e mantém os padrões.
+A primeira regra que casa vence. Os campos de estilo que ela especifica substituem os padrões da ocorrência, e os campos não especificados herdam esses padrões. Se nenhuma regra casar, os padrões continuam valendo. A comparação usa o valor completo do token, antes do corte para exibição. Defina `hide = true` em uma regra para remover o token que casou e o separador dele. Linhas sem nenhum token restante também somem. Por exemplo, `{ token = "machine", fg = "#61afef", rules = [{ equals = "Local", hide = true }] }` esconde o token da máquina quando o rótulo é exatamente `Local`. Isso compara o rótulo, não o tipo de conexão. Com `hide = false` ou com o campo omitido, o token continua visível. Uma regra sem substituições também encerra a busca e mantém os padrões.
 
 `equals`, `contains` e `starts_with` recebem strings e diferenciam maiúsculas de minúsculas. Adicione `ignore_case = true` para ignorar a caixa em caracteres ASCII. Caracteres fora do ASCII continuam diferenciando a caixa. Strings vazias seguem a comparação normal de strings: `equals` vazio casa só com um valor vazio, enquanto `contains` ou `starts_with` vazios casam com qualquer valor presente.
 
@@ -547,7 +547,7 @@ resume_agents_on_restore = true
 startup_per_agent_delay_ms = 100
 ```
 
-As restaurações automáticas iniciam um agente por vez, com 100 milissegundos de intervalo por padrão, para reduzir a disputa na inicialização. O primeiro agente elegível começa na hora. Defina `startup_per_agent_delay_ms = 0` para tirar o intervalo. Execuções manuais e anexações explícitas de terminal não mudam. Reinicie o servidor do Herdr para aplicar as mudanças.
+As restaurações automáticas iniciam um agente por vez, com 100 milissegundos de intervalo por padrão, para reduzir a disputa na inicialização. O primeiro agente elegível começa na hora. Defina `startup_per_agent_delay_ms = 0` para tirar o intervalo. O intervalo não afeta execuções manuais nem anexações explícitas de terminal. Reinicie o servidor do Herdr para aplicar as mudanças.
 
 Só painéis com uma referência válida de sessão nativa, vinda de uma integração oficial, podem ser retomados. Os outros painéis voltam como shells normais. Veja [Estado e restauração da sessão](/pt-br/docs/session-state/) para os agentes com suporte e o comportamento da persistência.
 
@@ -561,7 +561,7 @@ reveal_hidden_cursor_for_cjk_ime = true
 cjk_ime_agents = ["claude", "pi", "codex"]
 ```
 
-Restringir `cjk_ime_agents` evita mostrar um cursor de hardware extra em aplicações sem relação com os agentes. Procure essas chaves na [Referência de configuração](/pt-br/docs/config-reference/) para ver os nomes de agentes e os formatos de cursor aceitos.
+Restringir `cjk_ime_agents` evita mostrar um cursor de hardware extra em aplicações não relacionadas. Procure essas chaves na [Referência de configuração](/pt-br/docs/config-reference/) para ver os nomes de agentes e os formatos de cursor aceitos.
 
 ## Troca da fonte de entrada no prefixo
 

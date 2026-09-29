@@ -14,7 +14,7 @@ Anote também o sistema operacional, o nome e a versão do terminal externo, se 
 
 ## A janela do IME CJK aparece no lugar errado ou o cursor pisca no Windows
 
-No Windows nativo e no WSL, o Herdr usa por padrão um cursor desenhado nas células, porque o cursor nativo pode piscar, pular ou mostrar posições desatualizadas enquanto multiplexadores baseados em ConPTY redesenham a tela. Um cursor desenhado nas células não fornece a âncora de cursor nativa que a interface de composição do IME de coreano, japonês e chinês usa.
+No Windows nativo e no WSL, o Herdr usa por padrão um cursor desenhado nas células, porque o cursor nativo pode piscar, pular ou mostrar posições desatualizadas enquanto multiplexadores baseados em ConPTY redesenham a tela. Um cursor desenhado nas células não consegue fornecer a âncora de cursor nativa que a interface de composição do IME de coreano, japonês e chinês usa.
 
 Se a janela de composição ou de candidatos do IME aparecer no lugar errado, ative o cursor nativo:
 
@@ -23,7 +23,7 @@ Se a janela de composição ou de candidatos do IME aparecer no lugar errado, at
 host_cursor = "native"
 ```
 
-O modo nativo restaura a âncora do IME, mas pode trazer de volta artefatos ocasionais de movimento do cursor enquanto há saída ativa. Volte ao cursor visualmente estável com `host_cursor = "drawn"`, ou remova a configuração para usar o padrão do Windows. Veja [Suporte a Windows](/pt-br/docs/windows-beta/) para a limitação atual.
+O modo nativo restaura a âncora do IME, mas pode trazer de volta artefatos ocasionais de movimento do cursor enquanto há saída ativa. Volte ao cursor visualmente estável com `host_cursor = "drawn"`, ou remova a configuração para usar o padrão do Windows. Veja [Suporte ao Windows](/pt-br/docs/windows-beta/) para a limitação atual.
 
 ## Enter, Tab ou Backspace dispara duas vezes
 
