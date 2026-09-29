@@ -1,0 +1,372 @@
+---
+title: Integrações
+description: Instale as integrações do Herdr para Pi, OMP, Claude Code, Codex, GitHub Copilot CLI, Devin CLI, Droid, Kimi Code CLI, OpenCode, Kilo Code CLI, Hermes Agent, Qoder CLI, Qwen Code, Letta Code, Cursor Agent CLI, MastraCode, Antigravity CLI e Grok CLI.
+---
+
+O Herdr detecta automaticamente os agentes aos quais dá suporte. Instale a integração de um agente para que o Herdr retome a mesma sessão depois de um reinício do servidor. Algumas integrações também informam o estado do agente diretamente. Veja [Agentes](/pt-br/docs/agents/) para saber a quais agentes o Herdr dá suporte e quais agentes dão suporte ao Herdr.
+
+## Instalar integrações
+
+Abra as configurações dentro do Herdr e use a aba de integrações para instalar as integrações recomendadas para os agentes encontrados no seu `PATH`, ou execute os comandos manualmente:
+
+```bash
+herdr integration install pi
+herdr integration install omp
+herdr integration install claude
+herdr integration install codex
+herdr integration install copilot
+herdr integration install devin
+herdr integration install droid
+herdr integration install kimi
+herdr integration install opencode
+herdr integration install kilo
+herdr integration install hermes
+herdr integration install qodercli
+herdr integration install qwen
+herdr integration install letta
+herdr integration install cursor
+herdr integration install mastracode
+herdr integration install antigravity-cli
+herdr integration install grok
+```
+
+## Desinstalar integrações
+
+```bash
+herdr integration uninstall pi
+herdr integration uninstall omp
+herdr integration uninstall claude
+herdr integration uninstall codex
+herdr integration uninstall copilot
+herdr integration uninstall devin
+herdr integration uninstall droid
+herdr integration uninstall kimi
+herdr integration uninstall opencode
+herdr integration uninstall kilo
+herdr integration uninstall hermes
+herdr integration uninstall qodercli
+herdr integration uninstall qwen
+herdr integration uninstall letta
+herdr integration uninstall cursor
+herdr integration uninstall mastracode
+herdr integration uninstall antigravity-cli
+herdr integration uninstall grok
+```
+
+O Herdr salva as configurações das integrações atomicamente no Linux e no macOS e também para arquivos novos. No Windows, os arquivos existentes mantêm as permissões porque o Herdr faz primeiro um backup e depois atualiza o arquivo no lugar. Se o Windows informar um backup, feche o agente e inspecione a configuração antes de tentar de novo. Descarte um `.herdr-backup.pending` inacabado, sem restaurá-lo, e só depois de conferir a configuração. Ou, se precisar, restaure o conteúdo de um `.herdr-backup` completo para o arquivo existente. Se o arquivo não existir, defina primeiro as permissões que ele deveria ter. Em seguida, confira a configuração e remova o backup.
+
+## Como o Herdr usa as integrações
+
+Toda integração informa ao Herdr em qual sessão o agente está, para que o Herdr possa retomá-la depois de um reinício do servidor. Desative isso com `[session] resume_agents_on_restore = false`.
+
+As integrações do Pi, do OMP, do Kimi Code CLI, do OpenCode, do Kilo Code CLI e do MastraCode também informam o estado do agente. Enquanto elas informam, o Herdr usa esses informes em vez de ler a tela. As outras deixam o estado com a detecção de tela.
+
+A restauração nativa da sessão exige integrações atuais do Herdr: integração do Pi na versão `2`, OMP na versão `3`, Claude Code na versão `6`, Codex na versão `5`, GitHub Copilot CLI na versão `2`, Devin CLI na versão `2`, Droid na versão `2`, Kimi Code CLI na versão `3`, Qoder CLI na versão `2`, Qwen Code na versão `1`, Letta Code na versão `1`, Cursor Agent CLI na versão `1`, Grok CLI na versão `2`, OpenCode na versão `5`, Kilo Code CLI na versão `1`, Hermes Agent na versão `5`, MastraCode na versão `1` ou Antigravity CLI na versão `1`. Confira as versões instaladas com `herdr integration status`.
+
+## Integrar o seu próprio agente
+
+Se você desenvolve um agente de programação, pode informar ao Herdr o estado dele e o comando para retomá-lo a partir do seu próprio código, sem adicionar suporte nativo no Herdr. Veja [Adicionar suporte ao Herdr no seu agente](/pt-br/docs/add-herdr-support/).
+
+## Pi
+
+Instale a integração do Pi:
+
+```bash
+herdr integration install pi
+```
+
+O Herdr grava a extensão incluída em:
+
+```text
+~/.pi/agent/extensions/herdr-agent-state.ts
+```
+
+Se `PI_CODING_AGENT_DIR` estiver definida, o Herdr grava em vez disso em `$PI_CODING_AGENT_DIR/extensions/herdr-agent-state.ts`. O Herdr cria o diretório de extensões quando o diretório do agente Pi já existe. A desinstalação remove só esse arquivo de extensão.
+
+## OMP
+
+Instale a integração do OMP:
+
+```bash
+herdr integration install omp
+```
+
+O Herdr grava a extensão incluída em:
+
+```text
+~/.omp/agent/extensions/herdr-omp-agent-state.ts
+```
+
+Quando `PI_CODING_AGENT_DIR` está definida, o Herdr a usa como o diretório completo do agente. Caso contrário, usa `$HOME/$PI_CONFIG_DIR/agent` quando `PI_CONFIG_DIR` está definida, e recorre a `~/.omp/agent` quando não está. Se o Pi e o OMP resolverem para o mesmo diretório de extensões, o Herdr recusa a instalação do OMP, para que o Pi não carregue a extensão do OMP. Configure diretórios de agente separados antes de instalar as duas integrações. O Herdr cria o diretório de extensões quando o diretório do agente OMP resolvido já existe. A desinstalação remove só esse arquivo de extensão.
+
+A integração do OMP informa `omp` como rótulo do agente, além do estado de ciclo de vida e da identidade nativa da sessão, pela API de socket do Herdr. Ela não precisa da detecção nativa de processos para o executável `omp`, e o Herdr consegue retomar um painel do OMP com `omp --resume=<session>` depois de um reinício do servidor.
+
+## Claude Code
+
+Instale o hook do Claude Code:
+
+```bash
+herdr integration install claude
+```
+
+O hook informa a identidade da sessão do Claude Code ao socket local do Herdr quando a sessão começa. O estado do Claude Code vem da detecção por manifest de tela do Herdr.
+
+A integração do Claude na v10 casa só com as origens documentadas de `SessionStart`: `startup`, `resume`, `clear`, `compact` e `fork`. Isso impede que os eventos `new` e `load` do Grok disparem o hook do Claude importado pelo Herdr, sem desativar outros hooks compatíveis com o Claude. Reinstale a integração do Claude depois de atualizar, para migrar o matcher curinga anterior. Novos valores de origem do Claude exigem uma atualização da integração.
+
+O Herdr usa `~/.claude` por padrão, ou `CLAUDE_CONFIG_DIR` quando definida. O diretório de configuração do Claude já precisa existir. A instalação grava `hooks/herdr-agent-state.sh` e atualiza `settings.json` com as entradas de hook do Herdr. A desinstalação remove as entradas de hook correspondentes e apaga o script do hook.
+
+## Codex
+
+Instale o hook do Codex:
+
+```bash
+herdr integration install codex
+```
+
+O hook do Codex informa a identidade da sessão pela mesma API de socket local que as outras integrações usam. O estado do Codex vem da detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.codex` por padrão, ou `CODEX_HOME` quando definida. O diretório de configuração do Codex já precisa existir. A instalação grava `herdr-agent-state.sh`, atualiza `hooks.json` e garante `[features] hooks = true` no `config.toml`. Ela também remove a flag obsoleta `codex_hooks` do nível superior, quando existe. A desinstalação remove as entradas do Herdr de `hooks.json` e apaga o script do hook, mas deixa o `config.toml` como está.
+
+## GitHub Copilot CLI
+
+Instale o hook do GitHub Copilot CLI:
+
+```bash
+herdr integration install copilot
+```
+
+O hook do Copilot informa a identidade da sessão pela mesma API de socket local que as outras integrações usam. O estado do Copilot vem da detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.copilot` por padrão, ou `COPILOT_HOME` quando definida. O diretório de configuração do Copilot já precisa existir. A instalação grava `hooks/herdr-agent-state.sh` e atualiza `settings.json` com uma entrada de hook `SessionStart`. A desinstalação remove as entradas do Herdr de `settings.json` e apaga o script do hook.
+
+Depois que o Copilot emite um evento que carrega a sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `copilot --resume=<id>`.
+
+## Devin CLI
+
+Instale o hook do Devin CLI:
+
+```bash
+herdr integration install devin
+```
+
+O hook informa a identidade nativa da sessão a partir dos eventos de sessão, prompt, uso de ferramenta, permissão e parada do Devin. O estado do Devin continua vindo da detecção por manifest de tela e por OSC do Herdr, porque os hooks do Devin não emitem uma transição de estado confiável depois de cada cancelamento de permissão ou interrupção do usuário.
+
+O Herdr usa `$XDG_CONFIG_HOME/devin` quando `XDG_CONFIG_HOME` está definida. Caso contrário, usa `~/.config/devin` no Linux e no macOS ou `%APPDATA%\devin` no Windows. O diretório de configuração do Devin já precisa existir. A instalação grava `herdr-agent-state.sh` no Unix ou `herdr-agent-state.ps1` no Windows e atualiza `config.json` com as entradas de hook do Herdr. O hook atualiza a referência da sessão enquanto o Devin roda. A desinstalação remove as entradas do Herdr de `config.json` e apaga o script do hook.
+
+O Herdr retoma as sessões salvas do Devin com `devin --resume <id>`. A detecção nativa por manifest de tela continua sendo a autoridade sobre o estado, com ou sem o hook instalado.
+
+## Kimi Code CLI
+
+Instale o hook do Kimi Code CLI:
+
+```bash
+herdr integration install kimi
+```
+
+O hook informa ao Herdr a identidade da sessão e o estado de ciclo de vida do Kimi. Com isso, o Herdr faz a restauração nativa e usa o hook como autoridade para o status `idle`, `working` e `blocked`. Ele exige o Kimi Code CLI `0.14.0` ou mais recente.
+
+O Herdr usa `~/.kimi-code` por padrão, ou `KIMI_CODE_HOME` quando definida. O diretório de configuração do Kimi Code já precisa existir. A instalação grava `hooks/herdr-agent-state.sh` e acrescenta entradas `[[hooks]]` gerenciadas pelo Herdr ao `config.toml`. A desinstalação remove o bloco de configuração gerenciado pelo Herdr e apaga o script do hook.
+
+O Herdr retoma as sessões salvas do Kimi com `kimi --session <id>`.
+
+## Droid
+
+Instale o hook do Droid:
+
+```bash
+herdr integration install droid
+```
+
+O hook do Droid informa a identidade da sessão pela mesma API de socket local que as outras integrações usam. O estado de ciclo de vida continua vindo da detecção por manifest de tela do Herdr, porque os hooks do Droid não cobrem todas as transições do ciclo de vida.
+
+O Herdr usa `~/.factory` para os hooks do Droid. O diretório de configuração do Factory já precisa existir. A instalação grava `hooks/herdr-agent-state.sh`, atualiza `settings.json` com uma entrada de hook `SessionStart` do Herdr e remove de `hooks.json` as entradas antigas de hook do Droid do Herdr, se existirem. A desinstalação remove as entradas do Herdr dos dois arquivos de configuração e apaga o script do hook.
+
+Depois que o Droid emite um evento de início de sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `droid --resume <id>`.
+
+## OpenCode
+
+Instale o plugin do OpenCode:
+
+```bash
+herdr integration install opencode
+```
+
+A integração funciona com o OpenCode V1 `1.18.29` ou mais recente e com o OpenCode V2 (testado com a beta `19242`). O diretório de configuração do OpenCode já precisa existir. Nesse diretório de configuração, o Herdr instala o ponto de entrada do servidor em `~/.config/opencode/plugins/herdr-agent-state.js`, o plugin de TUI compartilhado em `herdr-tui-session.js` e um ponto de entrada de TUI da V2 em `herdr-opencode/tui.js`.
+
+A instalação registra o plugin de TUI da V1 em `tui.jsonc` e o plugin de TUI da V2 em `cli.json`. As outras preferências e plugins continuam como estão. Um registro existente da V1 em `tui.json` também conta como instalado, e o Herdr o reutiliza sem criar `tui.jsonc`. A desinstalação remove o registro do Herdr dos dois arquivos de configuração da TUI e mantém os arquivos e as outras preferências. Se o OpenCode ainda tiver preferências de TUI da V1 para importar (`tui.json` ou `kv.json`), o Herdr adia o registro para que a migração da primeira execução possa rodar. Nesse caso, inicie o `opencode2` uma vez e reinstale a integração depois. Caso contrário, o Herdr cria `cli.json` com o registro do plugin. Reinicie a TUI do OpenCode depois da instalação. A desinstalação remove os arquivos de plugin gerenciados e as entradas de configuração deles.
+
+Na V2, o informe do ciclo de vida roda na TUI local do painel, que associa os eventos à sessão raiz selecionada mesmo quando vários painéis compartilham um único servidor do OpenCode. A conclusão e a interrupção encerram o estado trabalhando. Pedidos de permissão pendentes, formulários pendentes e execuções que falharam mantêm o painel bloqueado. Os clientes Mini e headless da V2 não rodam o plugin de TUI e, por isso, não oferecem esse informe do ciclo de vida.
+
+Na V1, o informe pela TUI segue a sessão selecionada do painel e as sessões descendentes dela. O painel fica trabalhando enquanto qualquer uma delas estiver ocupada ou tentando de novo, e bloqueado enquanto qualquer uma tiver uma permissão ou pergunta pendente. Anexar carrega a atividade existente. Pedidos de ferramenta cancelados não voltam a bloquear depois de reconectar. Navegar por um subagente mantém a família da sessão original, enquanto anexar direto a uma sessão filha acompanha a subárvore dessa filha, e não as irmãs dela.
+
+O `opencode run` e o `opencode --mini` locais da V1 mantêm os hooks legados do servidor. Esta mudança não adiciona informe do ciclo de vida local do painel aos clientes Mini e headless. Depois de atualizar a integração, reinicie os servidores compartilhados do OpenCode e também as TUIs deles, para que o informe antigo vindo do servidor não sobrescreva o estado local do painel.
+
+O plugin informa o estado de ciclo de vida e a identidade da sessão enquanto o OpenCode roda dentro de um painel do Herdr. Depois que o OpenCode emite um evento que carrega a sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `opencode --session <id>`. A detecção nativa por manifest de tela continua disponível quando o plugin não está instalado.
+
+## Kilo Code CLI
+
+Instale o plugin do Kilo Code CLI:
+
+```bash
+herdr integration install kilo
+```
+
+O Herdr grava o plugin em `~/.config/kilo/plugin/herdr-agent-state.js`. O diretório de configuração do Kilo já precisa existir. A desinstalação remove só esse arquivo de plugin.
+
+O plugin informa o estado de ciclo de vida e a identidade da sessão enquanto o Kilo roda dentro de um painel do Herdr. Depois que o Kilo emite um evento que carrega a sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `kilo --session <id>`. A detecção nativa por manifest de tela continua disponível quando o plugin não está instalado.
+
+## Hermes Agent
+
+Instale o plugin do Hermes Agent:
+
+```bash
+herdr integration install hermes
+```
+
+O Herdr grava `plugins/herdr-agent-state/` no diretório home do Hermes e ativa `herdr-agent-state` no `config.yaml` dele. `HERMES_HOME` tem como padrão `~/.hermes` no Unix e `%LOCALAPPDATA%\hermes` no Windows. O diretório de configuração do Hermes já precisa existir. Reinicie o Hermes depois de instalar, para que o plugin carregue. A desinstalação remove o diretório do plugin e tira `herdr-agent-state` de `plugins.enabled`.
+
+O plugin informa o id da sessão que pode ser retomada enquanto o Hermes roda dentro de um painel do Herdr. O Herdr usa a detecção por manifest de tela para `working`, `idle` e `blocked` e pode usar o id de sessão informado para retomar o painel com `hermes --resume <id>`.
+
+## Qoder CLI
+
+Instale o hook do Qoder CLI:
+
+```bash
+herdr integration install qodercli
+```
+
+O hook informa ao Herdr a identidade da sessão do Qoder CLI para a restauração nativa. O estado de ciclo de vida continua vindo da detecção por manifest de tela do Herdr, porque os hooks do Qoder não cobrem todas as transições do ciclo de vida.
+
+O Herdr usa `~/.qoder` por padrão, ou `QODER_CONFIG_DIR` quando definida. O diretório de configuração do Qoder já precisa existir. A instalação grava `hooks/herdr-agent-state.sh` e atualiza `settings.json` com as entradas de hook do Herdr. A desinstalação remove as entradas de hook correspondentes e apaga o script do hook.
+
+O Herdr retoma as sessões salvas do Qoder CLI com `qodercli --resume <id>`.
+
+A detecção nativa por manifest de tela continua disponível quando o hook não está instalado.
+
+## Qwen Code
+
+Instale o hook do Qwen Code:
+
+```bash
+herdr integration install qwen
+```
+
+O hook `SessionStart` informa só a identidade da sessão do Qwen Code, para a restauração nativa. O estado de ciclo de vida continua com a detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.qwen` por padrão, ou `QWEN_HOME` quando definida. O diretório de configuração do Qwen já precisa existir. A instalação grava `hooks/herdr-agent-session.sh` (`hooks/herdr-agent-session.ps1` no Windows) e adiciona uma entrada do Herdr em `settings.json`. A desinstalação remove só a entrada correspondente e o script gerenciado.
+
+O Herdr retoma as sessões salvas do Qwen Code com `qwen --resume <id>`.
+
+## Letta Code
+
+A instalação da integração do Letta Code é experimental e só funciona pela CLI. Ela não aparece na tela de integrações de Settings nem na API JSON de integrações. `herdr integration status` a mostra como `letta (experimental)`. A detecção do agente e `herdr agent start --kind letta` têm suporte independente dessa restrição de instalação.
+
+Instale o hook do Letta Code:
+
+```bash
+herdr integration install letta
+```
+
+O hook `SessionStart`, que não imprime nada, informa o ID da conversa para a restauração nativa. O estado do Letta Code continua vindo da detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.letta`. O diretório de configuração já precisa existir. A instalação grava `hooks/herdr-agent-session.sh` (`hooks/herdr-agent-session.ps1` no Windows) e adiciona uma entrada do Herdr em `settings.json`. A desinstalação remove só a entrada correspondente e o script gerenciado.
+
+O Herdr retoma conversas nomeadas com `letta --conversation <id>`. Ele registra a conversa padrão como `default:<agent-id>` e a retoma com `letta --conversation default --agent <agent-id>`.
+
+## Cursor Agent CLI
+
+Instale o hook do Cursor Agent CLI:
+
+```bash
+herdr integration install cursor
+```
+
+O hook informa a identidade da sessão pelo hook `sessionStart` do Cursor enquanto o Cursor Agent CLI roda dentro de um painel do Herdr. O estado do Cursor vem da detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.cursor` por padrão, ou `CURSOR_CONFIG_DIR` quando definida. O diretório de configuração do Cursor já precisa existir. A instalação grava `herdr-agent-state.sh` (`herdr-agent-state.ps1` no Windows) e adiciona uma entrada `sessionStart` do Herdr em `hooks.json`. A desinstalação remove a entrada de hook correspondente e apaga o script do hook.
+
+Depois que o Cursor emite um evento de início de sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `cursor-agent --resume <id>`. O comando `cursor-agent` precisa estar no `PATH` quando o Herdr restaura o painel. O Herdr não executa o comando genérico `agent`.
+
+## MastraCode
+
+Instale o hook do MastraCode:
+
+```bash
+herdr integration install mastracode
+```
+
+O hook informa ao Herdr o estado de ciclo de vida e a identidade da thread do MastraCode. Com isso, o Herdr usa o hook como autoridade para o status `idle`, `working` e `blocked` e faz a restauração nativa. O MastraCode não tem fallback por manifest de tela. O estado vem do hook enquanto o MastraCode roda dentro de um painel do Herdr.
+
+O Herdr usa `~/.mastracode`. A instalação grava `hooks/herdr-agent-state.sh` (`hooks/herdr-agent-state.ps1` no Windows) e adiciona entradas de comando do Herdr em `hooks.json`, criando o diretório quando ele não existe. A desinstalação remove as entradas de hook correspondentes e apaga o script do hook.
+
+O Herdr retoma as threads salvas do MastraCode com `mastracode --thread <id>`.
+
+## Antigravity CLI
+
+Instale o hook do Antigravity CLI:
+
+```bash
+herdr integration install antigravity-cli
+```
+
+O Herdr usa `~/.gemini/config/` por padrão, ou `ANTIGRAVITY_CLI_CONFIG_DIR` quando definida. É desse diretório que o Antigravity CLI lê as personalizações globais, e ele já precisa existir. A instalação grava `hooks/herdr-agent-state.sh` (ou `herdr-agent-state.ps1` no Windows) e adiciona um bloco `herdr`, de propriedade do Herdr, em `hooks.json`. O Antigravity CLI indexa `hooks.json` pelo nome do hook, então a instalação reescreve só esse bloco e não mexe nos outros hooks nomeados. A desinstalação remove o bloco `herdr` e apaga o script do hook.
+
+Esta integração cuida só da sessão. Ela informa a conversa atual do painel, mas não o estado do agente. O Herdr continua deduzindo trabalhando, ocioso e bloqueado a partir do que o Antigravity CLI desenha na tela.
+
+O hook roda em `PreInvocation`, então o Herdr descobre a conversa assim que você envia o primeiro prompt. A partir daí, o Herdr consegue retomar o painel com `agy --conversation <id>` depois de um reinício do servidor do Herdr.
+
+## Grok CLI
+
+Instale o hook do Grok CLI:
+
+```bash
+herdr integration install grok
+```
+
+O hook informa a identidade da sessão pelo hook `SessionStart` do Grok enquanto o Grok CLI roda dentro de um painel do Herdr. O estado do Grok vem da detecção por manifest de tela do Herdr.
+
+O Herdr usa `~/.grok` por padrão, ou `GROK_HOME` quando definida. O diretório de configuração do Grok já precisa existir. O Grok junta todos os arquivos `hooks/*.json` desse diretório, então a instalação grava um `hooks/herdr.json` independente com a entrada `SessionStart` do Herdr ao lado de `hooks/herdr-agent-state.sh` (`hooks/herdr-agent-state.ps1` no Windows) e nunca edita outros arquivos de hook. A desinstalação remove exatamente esses dois arquivos do Herdr.
+
+Depois que o Grok emite um evento de início de sessão, o Herdr pode usar o id de sessão informado para retomar o painel com `grok --resume <id>`.
+
+## Rótulos de status personalizados
+
+As integrações informam o estado de ciclo de vida só como estado semântico. Por exemplo, informe um agente como `working` sem adicionar campos de exibição ao informe de ciclo de vida.
+
+```bash
+herdr pane report-agent w1:p1 \
+  --source custom:docs \
+  --agent docs-bot \
+  --state working
+```
+
+Hooks do usuário que rodam ao lado de uma integração gerenciada pelo Herdr devem usar metadados em vez de `report-agent`. Os metadados mudam a apresentação sem tomar da integração a autoridade sobre `idle`, `working`, `blocked` ou a restauração da sessão. `--agent` e `--applies-to-source` protegem só os campos de apresentação (`--title`, `--display-agent` e `--state-label`). Os patches de token sempre se aplicam, e quem os informa é responsável por limpar ou renovar o TTL. `--display-agent` muda o nome visível.
+
+```bash
+herdr pane report-metadata "$HERDR_PANE_ID" \
+  --source user:claude-title \
+  --agent claude \
+  --title "Refactor auth middleware" \
+  --display-agent "Claude: auth" \
+  --token summary="refactor auth" \
+  --state-label working="refactoring auth" \
+  --ttl-ms 3600000
+```
+
+Tokens e rótulos de estado são só visuais. As esperas, as notificações e as agregações de estado por workspace continuam usando o estado semântico.
+
+## Depurar o estado das integrações
+
+Liste os agentes conhecidos:
+
+```bash
+herdr agent list
+```
+
+Leia um painel quando precisar conferir o que o Herdr consegue ver:
+
+```bash
+herdr pane read w1:p1 --source recent --lines 50
+```
+
+Se o estado de uma integração parecer errado, confirme primeiro que o agente está rodando dentro do Herdr e que o hook ou plugin correspondente está instalado na mesma conta de usuário.

@@ -1,0 +1,82 @@
+---
+title: Documentação do Herdr
+description: Gerenciador de workspaces de terminal para agentes de programação com IA.
+template: splash
+hero:
+  tagline: "Instale, aprenda e configure o Herdr. Comece pelo caminho que combina com você. Não é preciso experiência com multiplexadores."
+  image:
+    file: ../../../../public/assets/logo.svg
+  actions:
+    - text: Instalar o Herdr
+      link: /pt-br/docs/install/
+    - text: Início rápido
+      link: /pt-br/docs/quick-start/
+      variant: secondary
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Escolha o seu caminho
+
+<CardGrid>
+  <Card title="Nunca usou um multiplexador de terminal?">
+    Você não precisa aprender atalhos para começar. O Herdr é pensado para o mouse. Clique nos painéis, arraste as bordas, divida e alterne pelos menus do clique direito.
+
+    [Início rápido →](/pt-br/docs/quick-start/)
+  </Card>
+  <Card title="Vem do tmux ou do zellij?">
+    Você já conhece o modelo. O prefixo é `ctrl+b`, os painéis persistem, e desanexar (detach) e reanexar funcionam do jeito que você espera.
+
+    [Conceitos →](/pt-br/docs/concepts/) · [Atalhos de teclado →](/pt-br/docs/configuration/#atalhos-de-teclado)
+  </Card>
+</CardGrid>
+
+## Ou deixe o seu agente apresentar o Herdr
+
+Se você já usa um agente de programação com IA, deixe o onboarding com ele. Cole este prompt:
+
+```text
+Help me understand and set up Herdr. Read https://herdr.dev/agent-guide.md first, then walk me through it step by step.
+```
+
+O guia cobre os conceitos, a instalação, a configuração e as correções comuns do Herdr, para que o seu agente responda a partir da documentação em vez de improvisar.
+
+## Guias principais
+
+<CardGrid>
+  <Card title="Agentes">
+    Veja os agentes com suporte, o comportamento da detecção, as integrações, os rótulos personalizados e a anexação direta.
+
+    [Entenda os agentes →](/pt-br/docs/agents/)
+  </Card>
+  <Card title="Conectar máquinas">
+    Mantenha a máquina Local e as máquinas SSH salvas em uma única janela, com uma lista de agentes combinada e reconexões independentes.
+
+    [Conecte suas máquinas →](/pt-br/docs/connecting-machines/)
+  </Card>
+  <Card title="Estado da sessão">
+    Entenda como funcionam a desanexação, a restauração depois de um reinício, o replay do histórico dos painéis, a retomada nativa dos agentes e o handoff ao vivo.
+
+    [Compare os caminhos de estado →](/pt-br/docs/session-state/)
+  </Card>
+  <Card title="Configuração">
+    Configure atalhos de teclado, temas, comportamento da barra lateral, notificações, histórico de rolagem e opções avançadas.
+
+    [Configure o Herdr →](/pt-br/docs/configuration/)
+  </Card>
+  <Card title="API">
+    Controle o Herdr a partir de scripts, ferramentas e agentes pela CLI e pela API de socket local.
+
+    [Leia o guia da API →](/pt-br/docs/socket-api/)
+  </Card>
+  <Card title="Plugins">
+    Crie plugins locais executáveis de fluxo de trabalho, com ações declaradas no manifest e hooks de eventos.
+
+    [Escreva um plugin →](/pt-br/docs/plugins/)
+  </Card>
+  <Card title="Marketplace">
+    Compartilhe plugins pelo GitHub hoje e marque o seu repositório com uma tag para ele aparecer quando o marketplace for lançado.
+
+    [Publique um plugin →](/pt-br/docs/marketplace/)
+  </Card>
+</CardGrid>

@@ -1,0 +1,67 @@
+---
+title: Arquivo de skill do agente
+description: Instale as instruções do Herdr no Claude Code ou em outro agente de programação.
+---
+
+O Herdr traz um arquivo de skill de agente reutilizável em [`skills/herdr/SKILL.md`](https://github.com/herdrdev/herdr/blob/master/skills/herdr/SKILL.md).
+
+Instale esse arquivo em qualquer agente de programação que aceite skills reutilizáveis ou instruções personalizadas. A skill ensina o agente a controlar o Herdr de dentro de um painel do Herdr.
+
+O Herdr também publica um guia separado em [`herdr.dev/agent-guide.md`](https://herdr.dev/agent-guide.md), com outra finalidade: um agente que ajuda uma pessoa a aprender, configurar ou resolver problemas do Herdr. A skill é para um agente que opera o Herdr. O guia é para um agente que ensina uma pessoa.
+
+## O que a skill faz
+
+A skill manda o agente usar a CLI `herdr` quando `HERDR_ENV=1` está definida. Isso indica que o agente está rodando dentro de um painel gerenciado pelo Herdr e pode se comunicar com segurança com o socket local do Herdr.
+
+Com a skill instalada, um agente pode:
+
+- inspecionar workspaces, abas, painéis e agentes vizinhos
+- dividir painéis e rodar comandos sem roubar o foco
+- ler a saída dos painéis e os logs recentes
+- esperar servidores, testes ou outro agente terminarem
+- iniciar agentes auxiliares em painéis irmãos
+
+A skill é um arquivo de instruções em Markdown para agentes. Se o Herdr já estiver instalado, rode `herdr --skill` para imprimir a cópia que acompanha esse binário, na mesma versão dele.
+
+## Instale
+
+Instale a skill com `npx skills`:
+
+```bash
+npx skills add herdrdev/herdr --skill herdr -g
+```
+
+Se você instalou a skill quando ela ficava na raiz do repositório, rode esse comando add mais uma vez em vez de usar `skills update`. O comando add substitui a cópia grande demais e registra o novo local.
+
+A flag `-g` instala a skill globalmente para os agentes compatíveis. Omita `-g` para instalá-la no projeto atual.
+
+Use a cópia do repositório como fallback manual e como fonte de verdade:
+
+```text
+https://github.com/herdrdev/herdr/blob/master/skills/herdr/SKILL.md
+```
+
+Em agentes com sistema de skills, instale esse arquivo como uma skill chamada `herdr`. Em agentes sem sistema de skills, cole o arquivo nas instruções de projeto ou de usuário do agente.
+
+Depois da instalação, inicie o agente dentro do Herdr:
+
+```bash
+herdr
+claude
+```
+
+Ou use qualquer outro agente de programação em um painel do Herdr. Assim, `HERDR_ENV=1` fica disponível para o processo do agente.
+
+## Regra de segurança
+
+A skill começa com uma proteção: se `HERDR_ENV=1` não estiver definida, o agente deve parar e dizer que não está rodando dentro de um painel gerenciado pelo Herdr.
+
+Isso impede que um agente fora do Herdr tente controlar uma sessão que não é dele.
+
+## Referência para o agente
+
+O guia completo de comandos fica no próprio arquivo da skill. Ele cobre IDs de painel, `pane split`, `pane run`, `pane read`, `pane wait-output`, `agent wait`, comandos de workspace e de aba, além de receitas de coordenação.
+
+Leia o arquivo-fonte aqui:
+
+[Abra o `SKILL.md` no GitHub →](https://github.com/herdrdev/herdr/blob/master/skills/herdr/SKILL.md)
