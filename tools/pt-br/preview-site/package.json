@@ -1,0 +1,7 @@
+{
+  "name": "herdr-docs-preview",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "astro dev", "build": "astro build" },
+  "dependencies": { "astro": "latest", "@astrojs/starlight": "latest", "sharp": "latest" }
+}
