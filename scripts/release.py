@@ -13,6 +13,7 @@ RELEASE_FILES = {
     "docs/next/CHANGELOG.md",
     "docs/next/README.md",
     "docs/next/README.zh-CN.md",
+    "docs/next/README.pt-BR.md",
     "docs/next/product-announcement.json",
     "skills/herdr/SKILL.md",
 }
