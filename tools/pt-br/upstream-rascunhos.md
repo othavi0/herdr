@@ -40,8 +40,7 @@ The Starlight `pt-br` locale lives in the website repo, so the pages need that e
 
 Validation: `test_docs_translation_parity`, `test_release`, `bun test scripts/docs/`, `node scripts/docs/versions.mjs check`, and `node scripts/docs/preview.mjs check` pass. I also rendered the pages in a local Starlight build with all four locales, and every pt-br anchor link resolves. No Rust code is touched.
 
-## 3. Commits (em inglês, minúsculas, como o repo pede)
+## 3. Commits (já feitos na branch docs/pt-br-upstream)
 
 docs: add brazilian portuguese website docs
 docs: add brazilian portuguese readme
-chore: include pt-br in translation and release checks
