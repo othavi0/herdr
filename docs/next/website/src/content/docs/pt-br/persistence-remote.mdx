@@ -1,0 +1,151 @@
+---
+title: Persistência e acesso remoto
+description: Desanexe do Herdr, reanexe depois, use sessões nomeadas e conecte via SSH.
+---
+
+O Herdr mantém os painéis rodando em um servidor em segundo plano. O cliente no seu terminal pode desanexar e reconectar depois.
+
+Para os fluxos local, via SSH e com `herdr --remote`, veja [Como trabalhar com o Herdr](/pt-br/docs/how-to-work/).
+
+## Desanexar e reanexar
+
+Desanexe (detach) o cliente com `ctrl+b q`. Os painéis e agentes continuam rodando. Reanexe (reattach) executando `herdr` de novo. Pare a sessão e os painéis dela com `herdr server stop`.
+
+Quando o Herdr inicia de novo depois de uma parada completa do servidor, ele restaura o formato salvo da sessão. Para saber o que sobrevive ao desanexar, ao reiniciar o servidor, ao replay do histórico de tela, à restauração da sessão nativa do agente e ao handoff ao vivo, veja [Estado e restauração da sessão](/pt-br/docs/session-state/).
+
+## Sessões nomeadas
+
+Use sessões nomeadas quando quiser servidores do Herdr independentes.
+
+```bash
+herdr session list
+herdr session attach work
+herdr session attach side-project
+herdr session stop work
+herdr session delete side-project
+```
+
+Uma sessão nomeada tem os próprios painéis, abas, workspaces, sockets e estado de runtime. Ela continua compartilhando o mesmo arquivo de configuração global.
+
+Ao apagar uma sessão, use o nome exato mostrado por `herdr session list`, incluindo maiúsculas e minúsculas. Em sistemas de arquivos que não diferenciam maiúsculas de minúsculas, `herdr session delete foo` se recusa a apagar uma sessão chamada `Foo`.
+
+Use `--json` em scripts:
+
+```bash
+herdr session list --json
+herdr session stop work --json
+herdr session delete side-project --json
+```
+
+## Máquinas SSH salvas
+
+Para manter o Local e várias máquinas SSH em uma única janela do Herdr, veja [Conectar máquinas](/pt-br/docs/connecting-machines/). Esse guia cobre a configuração, a troca entre máquinas, as reconexões, os ajustes e a automação remota. Remover uma máquina salva só desconecta o cliente. Isso não para as sessões dessa máquina.
+
+## Anexar remotamente via SSH
+
+[Como trabalhar com o Herdr](/pt-br/docs/how-to-work/) compara os caminhos de conexão. Entre no servidor por SSH e execute `herdr` lá para o caminho no estilo do tmux, use [máquinas SSH salvas](/pt-br/docs/connecting-machines/) para trabalhar com várias máquinas ou anexe via SSH a partir da sua máquina local:
+
+```bash
+herdr --remote workbox
+herdr --remote ssh://you@server:2222
+```
+
+Nesse modo, o servidor remoto é o dono dos painéis em execução e envia o conteúdo dos terminais e o estado da sessão via SSH. O Herdr local desenha a interface, incluindo a barra lateral, os menus e o tema. Como o cliente roda localmente, o Herdr consegue levar recursos do desktop local para a sessão remota. Um exemplo é colar uma imagem da área de transferência: o Herdr copia a imagem para um arquivo temporário remoto e cola esse caminho.
+
+Por padrão, `herdr --remote` usa os seus atalhos de teclado locais do Herdr nessa anexação. Assim você mantém a memória muscular local mesmo quando o servidor remoto tem outra configuração. Depois de editar os atalhos locais, use a ação `reload config` da interface para aplicá-los sem desanexar. Use `--remote-keybindings server` quando quiser a configuração do servidor remoto. Os atalhos locais de comandos personalizados não são enviados, porque esses comandos rodariam no host remoto.
+
+Para destinos que você usa sempre, use a configuração do SSH:
+
+```text
+Host workbox
+  HostName server.example.com
+  User you
+  Port 2222
+```
+
+Depois, anexe com:
+
+```bash
+herdr --remote workbox
+```
+
+A anexação remota e as máquinas SSH salvas suportam clientes locais Linux, macOS e Windows conectando a hosts Linux ou macOS em x86_64 e aarch64, ou a hosts Windows em x86_64. As versões local e remota não precisam ser iguais quando as duas suportam a geração estável do endpoint. Em hosts Linux e macOS, o Herdr prefere um `herdr` compatível que já esteja no `PATH` remoto. Depois, confere os caminhos comuns de instalação direta, Homebrew, mise e perfil do Nix. Em hosts Windows, o Herdr confere o `PATH` e a versão gerenciada ativa. Se não existir um binário compatível, as execuções interativas oferecem instalar ou atualizar um. As execuções não interativas falham em vez de modificar o host. Instalações no Linux e no macOS usam `~/.local/bin/herdr`. Instalações no Windows usam o pacote completo do Windows e o runtime ConPTY local do app. Se `~/.local/bin` não estiver no `PATH` remoto, o Herdr avisa depois da instalação.
+
+Por padrão, `herdr --remote` roda a configuração remota e a ponte por meio de uma configuração SSH temporária. Essa configuração inclui primeiro a sua configuração do SSH e depois acrescenta ajustes de keepalive como fallback. Os ajustes de keepalive que você já tem vencem. Clientes Linux e macOS também usam um socket de controle privado por anexação para reaproveitar a conexão. O OpenSSH do Windows não faz isso. Defina `[remote].manage_ssh_config = false` para usar o `ssh` puro, sem a configuração gerada pelo Herdr nem o socket de controle.
+
+A anexação remota usa a autenticação normal do OpenSSH. Se o destino usa uma chave protegida por passphrase em um shell não interativo, script, job de CI ou terminal móvel que não consegue mostrar o pedido da passphrase, carregue a chave no ssh-agent antes:
+
+```bash
+ssh-add
+herdr --remote workbox
+```
+
+Em qualquer falha de autenticação remota, confirme primeiro o acesso SSH puro com `ssh workbox` e depois execute `herdr --remote workbox` de novo.
+
+Uma diferença de versão sozinha não substitui nem reinicia um servidor remoto em execução. A anexação remota pergunta antes de parar um servidor que não tem a compatibilidade exigida ou o suporte a daemon desanexado. Em máquinas salvas, isso também inclui os recursos de superfície e de verificação de saúde descritos em [Conectar máquinas](/pt-br/docs/connecting-machines/#atualizações-e-dados-salvos). A resposta padrão é No. Parar o servidor encerra os processos dos painéis dele. Para ativar o handoff ao vivo experimental quando essa atualização única for necessária, passe `--handoff`:
+
+```bash
+herdr --remote workbox --handoff
+```
+
+Se você entrar no servidor por SSH primeiro e executar `herdr` lá, o Herdr roda inteiro no servidor e não acessa a área de transferência do seu desktop local além da colagem normal de texto do terminal.
+
+Em hosts Linux e macOS, o Herdr pode copiar o binário local atual quando as plataformas são iguais. Em instalações via Homebrew, mise e Nix, quando as plataformas são diferentes, ou em hosts Windows, ele baixa o arquivo da versão correspondente à versão atual do cliente a partir de `https://herdr.dev/latest.json`.
+
+Em builds locais ou pacotes personalizados, defina `HERDR_REMOTE_BINARY` com o caminho de um arquivo local antes de rodar a anexação remota. Use um executável do Herdr solto para destinos Linux ou macOS e um pacote `herdr-windows-x86_64.zip` completo para destinos Windows.
+
+```bash
+HERDR_REMOTE_BINARY=target/release/herdr herdr --remote workbox
+```
+
+## Sessões nomeadas remotas
+
+Use `--session` com `--remote` para anexar a uma sessão nomeada no host remoto:
+
+```bash
+herdr --remote workbox --session agents
+```
+
+## Anexar direto a um terminal
+
+A anexação completa do Herdr abre a interface inteira do workspace. A anexação direta abre um único terminal do servidor no seu terminal atual.
+
+A anexação direta a um terminal está disponível no Linux e no macOS, mas não no Windows nativo.
+
+Anexe por alvo de agente:
+
+```bash
+herdr agent attach reviewer
+```
+
+Anexe por ID de terminal:
+
+```bash
+herdr terminal attach term_abc123
+```
+
+A anexação direta transmite o estado renderizado atual do terminal e depois os frames ANSI ao vivo. A entrada vai direto para esse terminal.
+
+Desanexe com `ctrl+b q`. Envie um `ctrl+b` literal com `ctrl+b ctrl+b`.
+
+Só um cliente de anexação direta com escrita controla a entrada e o redimensionamento de um terminal. Use `--takeover` para substituir o dono atual:
+
+```bash
+herdr terminal attach term_abc123 --takeover
+```
+
+Em pontes de terceiros que só precisam dos bytes renderizados do terminal, use um observador de sessão de terminal somente leitura:
+
+```bash
+herdr terminal session observe w1:p1 --cols 120 --rows 40
+```
+
+Ele imprime registros JSON `terminal.frame` delimitados por nova linha, com bytes ANSI em base64, e depois um registro `terminal.closed` quando o servidor fecha o fluxo. Vários observadores podem acompanhar o mesmo terminal sem assumir a entrada, o redimensionamento, a rolagem ou o controle por takeover.
+
+Em uma ponte interativa, use um controlador de sessão de terminal com escrita:
+
+```bash
+herdr terminal session control w1:p1 --takeover --cols 120 --rows 40
+```
+
+O modo de controle imprime os mesmos registros de frame delimitados por nova linha e lê comandos JSON delimitados por nova linha no stdin. `terminal.input` envia texto ou bytes em base64, `terminal.resize` muda a área visível do controlador, `terminal.scroll` rola a área visível anexada, `terminal.mouse` envia um evento de mouse em uma célula para aplicações que ativaram o relato de mouse, e `terminal.release` fecha o controlador. Só um controlador por vez controla a entrada e o redimensionamento.

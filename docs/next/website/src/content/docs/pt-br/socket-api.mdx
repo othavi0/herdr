@@ -1,0 +1,954 @@
+---
+title: Socket API
+description: Controle um servidor Herdr em execução a partir de scripts, ferramentas e agentes de programação.
+---
+
+O Herdr expõe uma API de socket local para scripts e agentes que precisam inspecionar ou controlar uma sessão em execução.
+
+A maior parte da automação deve começar pelos wrappers da CLI. Use a API de socket crua só quando precisar de controle direto de requisição e resposta ou de assinaturas de eventos de longa duração.
+
+## Escolha uma camada de integração
+
+| Camada | Use para |
+| --- | --- |
+| Skill de agente | Ensinar um agente de programação a usar o Herdr de dentro de um painel. |
+| Wrappers da CLI | Scripts de shell, orquestração simples e depuração feita por uma pessoa. |
+| API de socket crua | Ferramentas próprias, clientes do protocolo e assinantes de eventos. |
+
+As camadas compartilham os mesmos pontos de controle.
+
+## Schema
+
+A CLI instalada imprime o schema do protocolo de socket que acompanha aquele binário
+do Herdr:
+
+```bash
+herdr api schema
+herdr api schema --json
+herdr api schema --output herdr-api.schema.json
+```
+
+O `herdr api schema` sem opções imprime um resumo curto. `--json` imprime o documento
+JSON Schema completo para ferramentas, e `--output PATH` grava esse documento em um arquivo.
+O schema cobre requisições cruas, respostas de sucesso, respostas de erro, eventos
+emitidos e eventos de assinatura.
+
+## O que você pode controlar
+
+A API de socket pode:
+
+- criar, listar, focar, renomear e fechar workspaces
+- criar, listar, focar, renomear e fechar abas
+- listar, inspecionar, dividir, trocar de lugar, focar, redimensionar, renomear, ler, fechar e enviar entrada a painéis
+- listar, inspecionar, ler, enviar prompt, esperar, renomear, focar, iniciar e anexar agentes pelos helpers da CLI
+- reportar estado de agente personalizado a partir de hooks e plugins
+- assinar eventos e esperar por saída ou mudança de estado
+- instalar e desinstalar integrações nativas
+- parar o servidor e recarregar a configuração
+
+## Exemplos com a CLI
+
+Crie um workspace:
+
+```bash
+herdr workspace create --cwd ~/project --label api
+```
+
+Crie uma aba:
+
+```bash
+herdr tab create --label logs
+```
+
+Divida um painel e rode um comando:
+
+```bash
+herdr pane split w1:p1 --direction right
+herdr pane run w1:p2 "npm test"
+```
+
+Inspecione e reorganize painéis:
+
+```bash
+herdr pane layout --current
+herdr pane neighbor --direction right --current
+herdr pane resize --direction right --amount 0.1 --current
+herdr pane swap --direction right --current
+herdr pane zoom --on --current
+herdr pane split w1:p1 --direction right --ratio 0.333
+```
+
+Espere por um agente:
+
+```bash
+herdr agent wait w1:p1 --until done
+```
+
+Leia a saída de um painel:
+
+```bash
+herdr pane read w1:p2 --source recent --lines 50
+```
+
+## Métodos crus
+
+Os nomes dos métodos do socket usam notação com ponto:
+
+| Área | Métodos |
+| --- | --- |
+| Servidor | `ping`, `server.stop`, `server.reload_config`, `server.agent_manifests`, `server.reload_agent_manifests` |
+| Notificação | `notification.show` |
+| Cliente | `client.window_title.set`, `client.window_title.clear` |
+| Sessão | `session.snapshot` |
+| Workspace | `workspace.create`, `workspace.list`, `workspace.get`, `workspace.focus`, `workspace.rename`, `workspace.move`, `workspace.move_block`, `workspace.report_metadata`, `workspace.close` |
+| Worktree | `worktree.list`, `worktree.create`, `worktree.open`, `worktree.remove` |
+| Aba | `tab.create`, `tab.list`, `tab.get`, `tab.focus`, `tab.rename`, `tab.move`, `tab.close` |
+| Painel | `pane.split`, `pane.swap`, `pane.move`, `pane.zoom`, `pane.layout`, `pane.process_info`, `pane.neighbor`, `pane.edges`, `pane.focus_direction`, `pane.resize`, `pane.list`, `pane.current`, `pane.get`, `pane.rename`, `pane.send_text`, `pane.send_keys`, `pane.send_input`, `pane.read`, `pane.report_agent`, `pane.report_agent_session`, `pane.report_metadata`, `pane.clear_agent_authority`, `pane.release_agent`, `pane.close`, `pane.wait_for_output` |
+| Popup | `popup.close` |
+| Layout | `layout.export`, `layout.apply`, `layout.set_split_ratio` |
+| Agente | `agent.list`, `agent.get`, `agent.read`, `agent.explain`, `agent.send_keys`, `agent.prompt`, `agent.wait`, `agent.rename`, `agent.focus`, `agent.start`, `agent.view.set`, `agent.view.clear` |
+| Eventos | `events.subscribe`, `events.wait` |
+| Integrações | `integration.install`, `integration.uninstall` |
+| Plugins | `plugin.link`, `plugin.list`, `plugin.unlink`, `plugin.enable`, `plugin.disable`, `plugin.action.list`, `plugin.action.invoke`, `plugin.log.list`, `plugin.pane.open`, `plugin.pane.focus`, `plugin.pane.close` |
+
+O servidor controla o `agent.wait`, que funciona por eventos. Ele fixa o ocupante do painel resolvido, então um substituto não consegue satisfazer a espera. `agent.prompt` aceita um objeto `wait` opcional com `until` e `timeout_ms`. Assim a mesma requisição envia o prompt e inicia a espera, o que evita uma condição de corrida entre chamadas separadas. Se o agente resolvido já está `blocked`, `agent.prompt` retorna `agent_blocked` sem enviar entrada nem iniciar a espera.
+
+`workspace.move_block` move de forma atômica os `workspace_ids` ordenados para antes de `before_workspace_id`. Omita a âncora para mover o bloco para o fim. Os ids precisam ser únicos e a âncora não pode fazer parte do bloco. A resposta traz a lista ordenada de workspaces que vale como referência.
+
+`session.snapshot` retorna um snapshot de inicialização, feito uma única vez, para clientes que mantêm
+o próprio cache local do runtime. A resposta inclui metadados de versão e protocolo,
+os ids do workspace, da aba e do painel em foco, registros de workspace, registros de aba, registros de painel,
+snapshots de layout das abas e registros de agente. Não é uma assinatura. Para inicializar
+e recuperar o cache, assine primeiro e depois reconcilie com leituras de referência,
+como descrito em Assinaturas de eventos, mais abaixo. Eventos invalidam o estado em cache. Eles
+não podem ser reaplicados sem condição sobre um snapshot. Chame `session.snapshot`
+de novo depois de reconectar ou quando o cache local puder estar desatualizado. Os registros de workspace
+trazem a procedência do worktree anexado. A descoberta completa de worktrees do repositório continua sendo `worktree.list`.
+
+Na CLI, `herdr api snapshot` imprime a resposta ao vivo de `session.snapshot`
+em JSON, para clientes e agentes que querem um comando simples de inicialização.
+
+Os métodos de controle de painel usam ids públicos de painel como `w1:p1`. Nos métodos cujo
+schema torna `pane_id` opcional, o servidor usa o painel ativo em foco quando o campo é
+omitido. `pane.move` sempre exige o `pane_id` de origem.
+
+`pane.send_keys` e `pane.send_input.keys` aceitam strings de combinação de teclas do Herdr:
+teclas imprimíveis simples, teclas especiais como `enter` e `esc`, combinações com modificador
+como `ctrl+h`, `control+j`, `alt+x` e `shift+tab`, teclas de função como
+`f1` e pontuação nomeada como `minus` e `plus`. Eles não aceitam
+strings de atalho com `prefix+`.
+
+```json
+{"id":"req_current","method":"pane.current","params":{"caller_pane_id":"w1:p1"}}
+{"id":"req_layout","method":"pane.layout","params":{"pane_id":"w1:p1"}}
+{"id":"req_neighbor","method":"pane.neighbor","params":{"pane_id":"w1:p1","direction":"right"}}
+{"id":"req_edges","method":"pane.edges","params":{"pane_id":"w1:p1"}}
+{"id":"req_focus","method":"pane.focus_direction","params":{"direction":"right"}}
+{"id":"req_resize","method":"pane.resize","params":{"pane_id":"w1:p1","direction":"right","amount":0.1}}
+{"id":"req_zoom","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"toggle"}}
+{"id":"req_input","method":"pane.input.set","params":{"pane_id":"w1:p1","right_click":"pane"}}
+{"id":"req_split","method":"pane.split","params":{"direction":"right","ratio":0.333,"right_click":"pane","env":{"HERDR_ROLE":"tests"}}}
+{"id":"req_process","method":"pane.process_info","params":{"pane_id":"w1:p1"}}
+```
+
+`pane.current` retorna um único `PaneInfo`. Quando `caller_pane_id` está presente,
+o Herdr retorna esse painel. Quando ele é omitido, o Herdr retorna o painel ativo
+em foco.
+
+`pane.input.set` define `right_click` como `herdr` ou `pane` para um painel. `herdr`
+é o padrão. Com `pane`, o Herdr repassa sem alteração os gestos de segurar e arrastar com o botão direito
+quando o aplicativo pede o relatório de mouse do terminal. Caso contrário, o Herdr volta
+para o menu do painel. Clicar com o botão direito na moldura do painel sempre abre o menu do Herdr.
+`pane.split` aceita o mesmo valor opcional de `right_click` para o painel recém-criado.
+
+`PaneInfo` inclui `scroll` quando as métricas de rolagem do terminal estão disponíveis:
+
+```json
+{
+  "offset_from_bottom": 12,
+  "max_offset_from_bottom": 240,
+  "viewport_rows": 30
+}
+```
+
+Os clientes podem tratar `offset_from_bottom == 0` como o estado de rolagem no fim.
+
+### Gráficos no painel
+
+Aplicativos e plugins devem emitir o protocolo gráfico padrão do Kitty pela
+saída de terminal do próprio painel. O Herdr cuida do posicionamento, do recorte e da
+visibilidade das imagens em terminais externos compatíveis.
+
+A API externa de sobreposição em painel pelo socket foi removida. `pane.graphics.info`,
+`pane.graphics.set`, `pane.graphics.clear` e `pane.graphics.stream` não estão mais
+disponíveis. Não existe API de imagem pelo socket que os substitua. A compatibilidade
+interna de protocolo com servidores antigos não traz esses métodos públicos de volta.
+
+`pane.layout` retorna o snapshot de layout da aba com `workspace_id`, `tab_id`,
+`zoomed`, a `area` externa, `focused_pane_id`, os retângulos dos painéis e os retângulos e proporções das divisões.
+`pane.neighbor` e `pane.edges` incluem esse mesmo snapshot de layout, para que os clientes
+decidam o próximo passo sem estado de layout privado.
+
+`pane.process_info` retorna o pid do shell do painel, o id do grupo de processos em primeiro plano
+quando disponível e os processos em primeiro plano com pid, nome, argv/cmdline e cwd
+quando a plataforma expõe esses dados.
+
+`layout.export` retorna uma árvore de layout de aba portável. Omita `tab_id` e `pane_id`
+para exportar a aba ativa, passe `tab_id` para exportar essa aba ou passe `pane_id` para
+exportar a aba que contém esse painel.
+
+```json
+{"id":"req_export","method":"layout.export","params":{"tab_id":"w1:t1"}}
+```
+
+A resposta inclui `workspace_id`, `tab_id`, `zoomed`, `focused_pane_id` e
+`root`. `root` é uma árvore BSP de nós `pane` e `split`. Nós de painel podem incluir
+`pane_id`, `label`, `cwd` e o `command` em argv. Nós de divisão usam
+`direction` (`right` ou `down`), `ratio`, `first` e `second`.
+
+`layout.apply` cria uma aba nova a partir de uma árvore declarativa. Se `tab_id` for
+informado, o Herdr cria primeiro a aba substituta e depois fecha a aba antiga.
+Isso restaura estrutura, rótulos, cwd, env e comandos argv opcionais. Não
+preserva PTYs ativos, histórico de rolagem nem processos em execução.
+
+```json
+{
+  "id": "req_apply",
+  "method": "layout.apply",
+  "params": {
+    "workspace_id": "wabc",
+    "tab_label": "dev",
+    "focus": true,
+    "root": {
+      "type": "split",
+      "direction": "right",
+      "ratio": 0.65,
+      "first": {
+        "type": "pane",
+        "label": "editor",
+        "cwd": "/repo"
+      },
+      "second": {
+        "type": "pane",
+        "label": "tests",
+        "cwd": "/repo",
+        "command": ["sh", "-c", "just test"],
+        "env": { "HERDR_ROLE": "tests" }
+      }
+    }
+  }
+}
+```
+
+`layout.set_split_ratio` atualiza uma divisão existente no layout de uma aba. A resposta
+é `type: "layout_split_ratio_set"` com o `layout` portável atualizado.
+
+```json
+{"id":"req_ratio","method":"layout.set_split_ratio","params":{"tab_id":"w1:t1","path":[],"ratio":0.6}}
+```
+
+Os métodos que iniciam processos aceitam um objeto `env`. O Herdr aplica esses pares
+chave/valor só ao processo recém-iniciado. O Herdr também injeta `HERDR_SOCKET_PATH`,
+`HERDR_ENV=1`, `HERDR_WORKSPACE_ID`, `HERDR_TAB_ID` e `HERDR_PANE_ID` nos
+processos de painel que ele gerencia. Quando há conflito com o env informado por quem chama,
+as variáveis gerenciadas pelo Herdr prevalecem.
+
+`pane.swap` aceita a forma por direção e a forma explícita:
+
+```json
+{"id":"req_swap_dir","method":"pane.swap","params":{"pane_id":"w1:p1","direction":"right"}}
+{"id":"req_swap_explicit","method":"pane.swap","params":{"source_pane_id":"w1:p1","target_pane_id":"w1:p2"}}
+```
+
+A troca só funciona dentro da mesma aba. Ela preserva o formato das divisões, as proporções, os ids dos painéis e os
+processos em execução. A resposta é `type: "pane_swap"` com `changed`, `reason`
+opcional, `source_pane_id`, `target_pane_id` opcional, `focused_pane_id` e
+`layout`. Os valores de reason são `no_neighbor`, `same_pane`, `not_found` e
+`cross_tab`. Quando uma aba está com zoom, a troca mantém o zoom ativo e altera o layout
+oculto da aba inteira.
+
+`pane.move` move um painel em execução para outra aba, para uma aba nova ou para um novo
+workspace:
+
+```json
+{"id":"req_move_tab","method":"pane.move","params":{"pane_id":"w1:p2","destination":{"type":"tab","tab_id":"w1:t2","target_pane_id":"w1:p3","split":"right","ratio":0.5},"focus":true}}
+{"id":"req_move_new_tab","method":"pane.move","params":{"pane_id":"w1:p2","destination":{"type":"new_tab","workspace_id":"w1","label":"logs"},"focus":true}}
+{"id":"req_move_new_workspace","method":"pane.move","params":{"pane_id":"w1:p2","destination":{"type":"new_workspace","label":"logs","tab_label":"main"},"focus":true}}
+```
+
+Mover para uma aba existente exige `split: "right" | "down"`. `target_pane_id` é
+opcional e, por padrão, é o painel em foco da aba de destino. Mudanças de layout na mesma aba
+continuam sendo `pane.swap`. Mover para a aba de origem retorna `changed: false` com
+`reason: "same_tab"`. Movimentos que envolvem uma aba de origem ou de destino com zoom retornam
+`changed: false` com `reason: "zoomed_tab"`.
+
+A resposta é `type: "pane_move"` com `changed`, `reason` opcional,
+`previous_pane_id`, `previous_workspace_id`, `previous_tab_id`, o `pane` movido,
+`source_layout` opcional, `target_layout`, registros opcionais do workspace ou da
+aba criados, ids opcionais do workspace ou da aba fechados e `focused_pane_id`.
+Movimentos entre workspaces mantêm vivos o painel interno e o terminal, mas atribuem um novo
+id público de painel no workspace de destino. Os assinantes podem escutar
+`pane.moved`. O Herdr não emite eventos falsos de fechamento e criação de painel para o processo
+de terminal movido.
+
+`pane.zoom` alterna, ativa ou desativa o zoom da aba do painel alvo:
+
+```json
+{"id":"req_zoom_toggle","method":"pane.zoom","params":{"pane_id":"w1:p1"}}
+{"id":"req_zoom_on","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"on"}}
+{"id":"req_zoom_off","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"off"}}
+```
+
+Sem `pane_id`, o alvo é o painel ativo em foco no servidor. A resposta é
+`type: "pane_zoom"` com `changed`, `zoom_changed`, `focus_changed`, `reason`
+opcional, `pane_id`, `focused_pane_id`, `zoomed` e `layout`. `changed` é
+true quando o estado de zoom ou o foco mudou. Os valores de reason são `single_pane`,
+`already_zoomed` e `already_unzoomed`.
+
+O wrapper da CLI para `notification.show` é:
+
+```bash
+herdr notification show "build failed" --body "api workspace" --position top-left --sound request
+```
+
+Mostre uma notificação ao usuário pelo meio de entrega de toast configurado:
+
+```json
+{"id":"req_notify","method":"notification.show","params":{"title":"build failed","body":"api workspace","position":"top-left","sound":"request"}}
+```
+
+`title` é obrigatório e precisa conter texto visível depois da remoção de caracteres de controle e de espaços repetidos. `body` é opcional. O Herdr converte quebras de linha, tabs, retornos de carro e espaços repetidos em um espaço só, e depois corta o texto da notificação em 80 caracteres para `title` e 240 caracteres para `body`. Um `title` vazio depois da limpeza retorna `invalid_params`. `position` é opcional e só vale quando `ui.toast.delivery = "herdr"`. As posições são relativas ao quadro inteiro do Herdr, e sem posição o Herdr usa `ui.toast.herdr.position`. As entregas terminal, system e off ignoram `position`. `sound` é opcional e pode ser `none`, `done` ou `request`. O padrão é `none`, e o som só toca quando a notificação aparece.
+
+A resposta informa se algo foi mostrado:
+
+```json
+{"id":"req_notify","result":{"type":"notification_show","shown":true,"reason":"shown"}}
+```
+
+Os motivos possíveis são `shown`, `disabled`, `rate_limited`, `no_foreground_client` e `busy`. `disabled` significa `ui.toast.delivery = "off"`. `busy` significa que um toast já visível no app não foi substituído. As entregas terminal e system são feitas no melhor esforço, pelo cliente Herdr anexado que está em primeiro plano.
+
+Defina ou limpe o título da janela do terminal externo do cliente em primeiro plano:
+
+```json
+{"id":"req_title","method":"client.window_title.set","params":{"title":"herdr api"}}
+{"id":"req_title_clear","method":"client.window_title.clear","params":{}}
+```
+
+`client.window_title.clear` devolve o título para `ui.window_title`. A resposta é
+`type: "client_window_title"` com `changed` e o reason `set`, `cleared` ou
+`no_foreground_client`.
+
+Os métodos de worktree gerenciam checkouts do Git como workspaces do Herdr. `worktree.create` cria um checkout e retorna os registros do novo `workspace`, `tab`, `root_pane` e `worktree`. Se a branch pedida já existe localmente, ele faz checkout dessa branch. Caso contrário, cria a branch a partir da base pedida ou de `HEAD`. `worktree.open` abre um checkout existente ou retorna o workspace que já está aberto. `worktree.remove` roda `git worktree remove` contra um workspace filho vinculado e nunca apaga a branch.
+
+Crie um worktree a partir de um workspace de origem:
+
+```json
+{"id":"req_1","method":"worktree.create","params":{"workspace_id":"w1","branch":"worktree/api","focus":false}}
+```
+
+Abra um checkout existente:
+
+```json
+{"id":"req_2","method":"worktree.open","params":{"workspace_id":"w1","branch":"worktree/api","focus":true}}
+```
+
+Remova um checkout vinculado:
+
+```json
+{"id":"req_3","method":"worktree.remove","params":{"workspace_id":"2","force":false}}
+```
+
+Use no máximo um entre `workspace_id` e `cwd` em `worktree.list`, `worktree.create` e `worktree.open`. Omita os dois para usar o workspace ativo. Use exatamente um entre `path` e `branch` em `worktree.open`. No socket cru, os valores de `cwd` e `path` precisam ser absolutos. A CLI expande valores relativos de `--cwd` e `--path` antes de enviar as requisições. As respostas de workspace incluem a procedência `worktree` opcional quando o workspace pertence a um grupo de worktrees do Herdr. Os comandos de worktree podem emitir `workspace.updated` quando um workspace existente ganha ou muda a procedência de worktree.
+
+Os comandos de worktree também emitem eventos de ciclo de vida. `worktree.create` emite `workspace.created`, `tab.created`, `pane.created` e `worktree.created`. `worktree.open` emite `worktree.opened` e também emite os eventos de criação de workspace, aba e painel quando abre um novo workspace do Herdr. `worktree.remove` emite `worktree.removed`. Se o workspace vinculado ainda estiver aberto, também emite `workspace.closed`.
+
+`workspace.close` recusa fechar um workspace primário enquanto houver workspaces de worktrees vinculados abertos, a menos que os parâmetros incluam `"close_group": true`. Sem essa intenção explícita de grupo, ele retorna `workspace_group_close_required`. Um fechamento explícito de grupo emite um evento `workspace.closed` para cada workspace que fecha.
+
+## Consultas da visão de agentes
+
+`agent.view.set` instala uma projeção declarativa e temporária para a visão nativa
+Agents. O Herdr reavalia a projeção sempre que os fatos dos agentes ou o contexto atual da
+UI mudam. Ela controla a barra lateral expandida e recolhida, a lista Agents no
+celular, os alvos de mouse, o foco por índice e a navegação para o Agent seguinte e anterior. Ela
+não muda `agent.list`, notificações, detecção nem as contagens globais de atenção.
+
+Mostre os agentes do Space apresentado no momento ou os agentes que pedem atenção
+em outro lugar, e ordene por atenção e pela transição de estado mais recente:
+
+```json
+{
+  "id": "view_set",
+  "method": "agent.view.set",
+  "params": {
+    "source": "plugin:example.agent-views",
+    "label": "focus",
+    "filter": {
+      "op": "any",
+      "filters": [
+        {
+          "op": "eq",
+          "field": "workspace_id",
+          "value": {"context": "current_workspace_id"}
+        },
+        {
+          "op": "in",
+          "field": "status",
+          "values": ["blocked", "done"]
+        }
+      ]
+    },
+    "sort": [
+      {"field": "attention", "order": "desc"},
+      {"field": "state_change_seq", "order": "desc"}
+    ]
+  }
+}
+```
+
+Os nós de filtro usam os valores de `op` `all`, `any`, `not`, `eq`, `in` ou `exists`.
+Os campos de filtro nativos são `status`, `workspace_id`, `tab_id`, `pane_id`,
+`agent`, `seen` e `state_change_seq`. Use `{"token":"name"}` como campo para
+filtrar metadados de painel reportados por plugins. Os valores são strings, booleanos, números
+sem sinal ou um objeto de contexto. Os valores de contexto são `current_workspace_id` e
+`current_tab_id`, e só podem ser comparados com o campo de ID correspondente. Em um
+cliente com máquinas salvas, a visão do servidor selecionado vale para a lista combinada
+de agentes. O contexto do workspace e da aba atuais inclui essa máquina selecionada, então um
+ID idêntico em outra máquina não casa. Ramos de filtro independentes,
+como `status` igual a `blocked`, continuam casando com agentes em qualquer máquina conectada.
+Os valores efetivos de status são `idle`, `working`, `blocked`, `done` e `unknown`.
+`done` significa ocioso e ainda não visto.
+
+Os campos de ordenação são `workspace_order`, `tab_order`, `pane_order`, `attention`,
+`status`, `agent`, `seen`, `state_change_seq` ou `{"token":"name"}`. As ordenações são
+estáveis, avaliadas em sequência, e aceitam `asc` ou `desc`. Valores ausentes ficam
+depois dos presentes. Quando `sort` é omitido, a política
+`ui.agent_panel_sort` existente continua ativa. Uma ordenação personalizada substitui
+essa política temporariamente, sem reescrever a configuração.
+
+`source` identifica o dono. Plugins usam `plugin:<HERDR_PLUGIN_ID>`. O Herdr
+recusa definições feitas por um plugin quando esse plugin não existe ou está desativado. Outros chamadores
+podem usar uma source própria que não comece com `plugin:`. Uma definição bem-sucedida substitui de forma atômica a
+visão anterior. A visão dura até ser limpa ou substituída, até o plugin dono
+ser desativado, desvinculado ou desinstalado, ou até o servidor encerrar. Plugins que querem
+um comportamento persistente devem salvar a consulta em `HERDR_PLUGIN_STATE_DIR` e
+reaplicá-la a partir de um hook `[[startup]]`.
+
+Limpe sem condição, ou só quando a source nomeada ainda é dona da visão:
+
+```json
+{"id":"view_clear","method":"agent.view.clear","params":{}}
+{"id":"view_clear_owned","method":"agent.view.clear","params":{"source":"plugin:example.agent-views"}}
+```
+
+Se a source não confere, a visão ativa fica como está. As respostas de set e clear usam
+`type: "agent_view"` e informam `active`, `source` e o `label` opcional.
+
+## APIs de plugin
+
+A API de plugin é uma interface inicial para ferramentas de fluxo de trabalho executáveis. Um plugin é
+um pacote com um manifest `herdr-plugin.toml`. O manifest declara hooks de
+inicialização, ações compartilháveis, hooks de evento, pontos de entrada de painel de terminal e
+handlers de link. Os hooks de inicialização rodam uma vez, depois da restauração, quando a API está pronta.
+Ações e painéis vêm só do manifest. O registro de ações em tempo de execução e a criação
+de painéis argv em tempo de execução não fazem parte da v1.
+
+Plugins instalados e vinculados persistem entre reinícios. O Herdr grava um arquivo de
+registro `plugins.json` ao lado de `session.json` em `plugin.link`,
+`plugin.unlink`, `plugin.enable` e `plugin.disable`. As CLIs
+`herdr plugin install` e `herdr plugin link` também gravam o mesmo registro
+quando o Herdr não está rodando, e a inicialização o carrega automaticamente. Na inicialização,
+o Herdr relê cada manifest do caminho original. Se o arquivo não existe ou não
+pode ser lido, a entrada continua com um campo `warnings`, para que `plugin.list` a mostre.
+
+O Herdr valida os valores `on` dos hooks de evento contra os nomes de evento conhecidos no momento do vínculo.
+Um nome desconhecido não impede o vínculo, mas as informações do plugin retornadas
+incluem um aviso (por exemplo, `"unknown event 'worktree.craeted'"`). Confira o
+campo `warnings` nas respostas de `plugin.link` e `plugin.list`.
+
+Vincule o manifest de um plugin local:
+
+```json
+{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/path/to/plugin","enabled":true}}
+```
+
+`plugin.link` também aceita metadados opcionais em `source`. A CLI usa isso quando instala a partir do GitHub, para que `plugin.list` mostre a origem, a ref pedida, o commit resolvido e o caminho do checkout gerenciado:
+
+```json
+{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herdr-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herdr-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
+```
+
+O caminho pode ser um diretório de plugin que contém `herdr-plugin.toml` ou o caminho direto
+do manifest. O formato do manifest é:
+
+```toml
+id = "example.worktree-bootstrap"
+name = "Worktree Bootstrap"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Prepare new worktrees"
+platforms = ["linux", "macos", "windows"]
+
+[[build]]
+command = ["bun", "install"]
+
+[[actions]]
+id = "bootstrap"
+title = "Bootstrap worktree"
+contexts = ["workspace"]
+command = ["bun", "run", "bootstrap.ts"]
+
+[[events]]
+on = "worktree.created"
+command = ["bun", "run", "bootstrap.ts"]
+
+[[panes]]
+id = "board"
+title = "Worktree board"
+placement = "overlay"
+command = ["bun", "run", "board.ts"]
+
+[[link_handlers]]
+id = "github-issue"
+title = "Open GitHub issue"
+pattern = "^https://github\\.com/[^/]+/[^/]+/(issues|pull)/[0-9]+$"
+action = "bootstrap"
+```
+
+`min_herdr_version` é obrigatório. O servidor se recusa a vincular um plugin quando o
+campo está ausente, é inválido ou é mais novo que o binário do Herdr em execução.
+
+Declare `platforms` no nível de cima com os identificadores de SO (`linux`, `macos`,
+`windows`) que o seu plugin suporta. Omitir `platforms` é permitido para desenvolvimento
+local. `plugin.link` funciona, mas a resposta inclui um aviso.
+Comandos de build, ações, hooks de evento, painéis e handlers de link podem
+declarar o próprio `platforms` para sobrescrever a lista do plugin. Se omitido, eles
+herdam do plugin. Invocar uma ação ou abrir um painel cujas plataformas efetivas
+não incluem o SO atual retorna o erro `platform_unsupported`.
+
+Liste, ative, desative ou desvincule plugins vinculados:
+
+```json
+{"id":"req_plugin_list","method":"plugin.list","params":{}}
+{"id":"req_plugin_disable","method":"plugin.disable","params":{"plugin_id":"example.worktree-bootstrap"}}
+{"id":"req_plugin_enable","method":"plugin.enable","params":{"plugin_id":"example.worktree-bootstrap"}}
+{"id":"req_plugin_unlink","method":"plugin.unlink","params":{"plugin_id":"example.worktree-bootstrap"}}
+```
+
+O Herdr resolve as ações a partir do manifest vinculado. `plugin.action.list` retorna todas as ações dos plugins instalados. Passe `plugin_id` para filtrar.
+
+```json
+{"id":"req_plugin_actions","method":"plugin.action.list","params":{}}
+{"id":"req_plugin_actions_filtered","method":"plugin.action.list","params":{"plugin_id":"example.worktree-bootstrap"}}
+```
+
+`plugin.action.list` retorna o `platforms` efetivo de cada ação depois de aplicar
+a herança do nível do plugin.
+
+Invoque uma ação pelo id qualificado ou pelo id simples da ação:
+
+```json
+{"id":"req_plugin_invoke","method":"plugin.action.invoke","params":{"action_id":"example.worktree-bootstrap.bootstrap","context":{"invocation_source":"keybinding"}}}
+```
+
+`plugin.action.invoke` resolve a ação do manifest, inicia o comando do manifest
+e retorna o contexto de invocação montado pelo Herdr junto com o registro de log do comando
+iniciado. O Herdr preenche os campos de contexto ausentes com o workspace ativo, a aba, o
+painel em foco, a procedência do worktree e o id da requisição. Invocar uma ação de um
+plugin desativado retorna o erro `plugin_disabled`.
+
+O Herdr injeta `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`, `HERDR_ENV=1`,
+`HERDR_PLUGIN_ID`, `HERDR_PLUGIN_ROOT`, `HERDR_PLUGIN_CONFIG_DIR`,
+`HERDR_PLUGIN_STATE_DIR`, `HERDR_PLUGIN_CONTEXT_JSON` e os valores disponíveis de
+`HERDR_WORKSPACE_ID`, `HERDR_TAB_ID` e `HERDR_PANE_ID`. Os comandos de
+ação também recebem `HERDR_PLUGIN_ACTION_ID`. Os hooks de evento recebem
+`HERDR_PLUGIN_EVENT` e `HERDR_PLUGIN_EVENT_JSON`. Os comandos de painel recebem
+`HERDR_PLUGIN_ENTRYPOINT_ID`.
+
+Liste os logs recentes dos comandos de ação e de evento:
+
+```json
+{"id":"req_plugin_logs","method":"plugin.log.list","params":{"plugin_id":"example.worktree-bootstrap","limit":20}}
+```
+
+Os hooks de evento rodam para plugins instalados e ativos quando o Herdr emite um evento
+com nome correspondente, como `worktree.created`.
+
+Não existe API de armazenamento de plugin gerenciada pelo Herdr na v1. `HERDR_PLUGIN_CONFIG_DIR`
+e `HERDR_PLUGIN_STATE_DIR` servem só para descobrir caminhos. Os plugins cuidam dos próprios arquivos,
+schemas, migrações e limpeza.
+
+Abra uma UI de terminal gerenciada:
+
+```json
+{"id":"req_plugin_pane","method":"plugin.pane.open","params":{"plugin_id":"example.board","entrypoint":"board","placement":"zoomed","target_pane_id":"w1:p1","env":{"HERDR_ROLE":"board"},"focus":true}}
+```
+
+`plugin.pane.open` exige um plugin instalado, ativo e compatível com a plataforma.
+Depois ele inicia o ponto de entrada `[[panes]]` pedido no manifest como um painel de terminal
+baseado em argv. O `placement` do painel no manifest tem `overlay` como padrão. O `placement`
+da requisição sobrescreve o manifest com `overlay`, `popup`, `split`, `tab` ou
+`zoomed`. Os posicionamentos overlay e popup usam o painel lado a lado ativo como contexto
+de inicialização. Terminais popup são modais para a sessão e não mudam o layout da aba.
+Os campos opcionais `width` e `height` definem o tamanho externo em células de terminal ou em
+porcentagens como `"80%"`. Dimensões omitidas usam metade do tamanho do terminal,
+e valores pequenos demais sobem até o mínimo do popup. Um popup não tem ID
+de painel, fica fora de todas as APIs `pane.*` e de agente, não emite eventos de ciclo de vida de painel,
+deixa o contexto de foco do plugin no painel lado a lado de baixo e não exporta
+`HERDR_PANE_ID` para o processo. A abertura do popup retorna `ok`. `popup.close` fecha
+o popup ativo e retorna
+`popup_not_open` quando não há nenhum. Painéis split e zoomed apontam para um painel
+existente. Painéis tab podem apontar para um workspace. Painéis split, tab, zoomed e overlay
+se comportam como painéis normais do Herdr, e `plugin.pane.focus` e `plugin.pane.close`
+continuam operando sobre esses painéis.
+
+## Transporte do socket
+
+O Herdr usa JSON delimitado por quebra de linha sobre um socket local. No Unix, esse socket é um
+socket de domínio Unix. No Windows, é um named pipe.
+
+Envie uma requisição por linha:
+
+```json
+{"id":"req_1","method":"ping","params":{}}
+```
+
+Uma resposta de sucesso inclui o mesmo `id`:
+
+```json
+{"id":"req_1","result":{"type":"pong"}}
+```
+
+Nas linhas de requisição que chegam à decodificação do JSON, as respostas de erro também repetem o
+`id` da requisição, inclusive quando o método ou os parâmetros são inválidos. Se o JSON é inválido
+ou não tem um `id` string de nível superior sem ambiguidade, a resposta de erro usa um `id` vazio.
+Erros de transporte, como UTF-8 inválido, podem fechar a conexão sem resposta.
+
+Assinaturas de eventos mantêm a conexão aberta depois da resposta inicial.
+
+## Caminhos do socket
+
+O socket padrão fica no diretório de configuração do Herdr.
+
+Sessões nomeadas têm sockets separados:
+
+```text
+~/.config/herdr/herdr.sock
+~/.config/herdr/sessions/<name>/herdr.sock
+```
+
+Ordem de resolução:
+
+1. `--session <name>` explícito na CLI
+2. `HERDR_SOCKET_PATH`
+3. `HERDR_SESSION=<name>`
+4. socket da sessão padrão
+
+Use `HERDR_SOCKET_PATH` só para sobrescritas de baixo nível.
+
+Em plugins, prefira invocar `HERDR_BIN_PATH` e os wrappers da CLI quando precisar de
+comportamento portável no Windows. Clientes de socket crus são responsáveis por usar a
+forma de socket local nativa da plataforma.
+
+## Relatório de estado do agente
+
+As integrações reportam o estado do agente com `pane.report_agent`.
+
+```json
+{
+  "id": "req_1",
+  "method": "pane.report_agent",
+  "params": {
+    "pane_id": "w1:p1",
+    "source": "custom:docs",
+    "agent": "docs-bot",
+    "state": "working",
+    "message": "building docs"
+  }
+}
+```
+
+`state` carrega o estado semântico do agente e afeta esperas, notificações e
+agregações. Reporte valores que servem só para exibição separadamente, por metadados.
+
+Integrações oficiais que reportam só a sessão enviam referências de sessão nativas com `pane.report_agent_session`. Integrações que reportam estado ainda podem incluir referências de sessão nativas em `pane.report_agent`. Relatórios de sessão independentes do estado não afetam esperas, notificações nem agregações.
+
+```json
+{
+  "id": "req_2",
+  "method": "pane.report_agent_session",
+  "params": {
+    "pane_id": "w1:p1",
+    "source": "herdr:codex",
+    "agent": "codex",
+    "agent_session_id": "..."
+  }
+}
+```
+
+Os dois métodos aceitam um array opcional `resume_argv` com o comando que retoma a sessão atual de quem reporta depois de um reinício do servidor Herdr. O primeiro elemento precisa ser um nome de comando simples, não um caminho, e nenhum elemento pode conter apóstrofo. Valores inválidos falham com `invalid_resume_argv` e o Herdr não aplica o relatório. Um agente personalizado precisa ocupar o painel por `pane.report_agent` antes de poder anexar um comando. Caso contrário, a requisição falha com `resume_not_accepted`. O Herdr guarda o comando só enquanto a mesma `source` e o mesmo `agent` ocupam o painel, e esse comando tem precedência sobre o comando de retomada nativo do Herdr para aquele agente. Versões antigas do Herdr ignoram o campo.
+
+```json
+{
+  "id": "req_3",
+  "method": "pane.report_agent_session",
+  "params": {
+    "pane_id": "w1:p1",
+    "source": "custom:my-agent",
+    "agent": "my-agent",
+    "agent_session_id": "...",
+    "resume_argv": ["my-agent", "--resume", "..."]
+  }
+}
+```
+
+`pane.get`, `pane.list`, `agent.get` e `agent.list` expõem um objeto `agent_session` somente leitura quando o Herdr tem uma referência de sessão nativa guardada:
+
+```json
+{
+  "agent_session": {
+    "source": "herdr:codex",
+    "agent": "codex",
+    "kind": "id",
+    "value": "..."
+  }
+}
+```
+
+Se não há referência de sessão nativa guardada, o campo é omitido.
+
+`pane.get`, `pane.list`, `agent.get` e `agent.list` também expõem `foreground_cwd` quando o Herdr consegue resolver o cwd do processo que controla o PTY do painel no momento. O campo `cwd` existente continua sendo o cwd do painel ou do workspace, usado para rótulos, para o comportamento de seguir o cwd e para o estado de sessão restaurado.
+
+`PaneInfo` e `AgentInfo` expõem os campos opcionais `terminal_title` e `terminal_title_stripped`. `terminal_title` é o último título OSC 0/2 depois da normalização de segurança. `terminal_title_stripped` remove um glifo inicial reconhecido de atividade ou de spinner e o espaço que vem depois dele. O servidor controla esses valores, que não sobrevivem a um reinício a frio e são independentes do `title` dos metadados e do estado semântico do agente.
+
+Use `pane.report_metadata` quando um hook do usuário quer personalizar a apresentação sem assumir o estado de ciclo de vida de uma integração do Herdr.
+
+```json
+{
+  "id": "req_2",
+  "method": "pane.report_metadata",
+  "params": {
+    "pane_id": "w1:p1",
+    "source": "user:claude-title",
+    "agent": "claude",
+    "title": "Refactor auth middleware",
+    "display_agent": "Claude: auth",
+    "state_labels": {
+      "working": "refactoring auth",
+      "idle": "ready",
+      "done": "review ready"
+    },
+    "tokens": {
+      "summary": "refactor auth",
+      "model": "opus"
+    },
+    "ttl_ms": 3600000
+  }
+}
+```
+
+Relatórios de metadados servem só para exibição. Metadados válidos podem sobrescrever o título do painel, o nome exibido do agente, os rótulos de estado visíveis e tokens nomeados arbitrários. `working`, `blocked`, `idle`, esperas, notificações e agregações continuam vindo do estado semântico. A restauração de sessão nativa vem das referências de sessão oficiais guardadas. `agent` é uma proteção opcional dos campos de apresentação contra o rótulo de agente que vale como referência. `applies_to_source` protege os campos de apresentação da mesma forma, contra a source da autoridade de ciclo de vida ativa. Essas proteções não valem para patches de token: quem reporta tokens cuida de limpá-los e de renovar o TTL. Use `display_agent` para mudar o nome visível. As chaves de `state_labels` precisam ser `idle`, `working`, `blocked`, `done` ou `unknown`.
+
+Mapas de token são patches por recurso. Uma string define uma chave, `null` do JSON limpa a chave e chaves omitidas ficam como estão. A última atualização aceita vence. O TTL opcional vale de forma independente para as chaves de token atualizadas por aquele relatório. As respostas de get e list de painel e de agente expõem os tokens do painel, e as linhas da barra lateral Agent podem mostrá-los como `$name`. Um relatório pode citar no máximo 16 chaves de token, e um painel ou workspace pode guardar no máximo 32 chaves. Nomes de token têm de 1 a 32 letras ASCII, dígitos, sublinhados ou hifens.
+
+Tokens de workspace seguem o mesmo contrato:
+
+```json
+{"id":"req_3","method":"workspace.report_metadata","params":{"workspace_id":"w1","source":"user:jj","tokens":{"jj_status":"2 changes","old":null},"ttl_ms":5000}}
+```
+
+As respostas de get e list de workspace expõem o mapa `tokens` resultante, e as linhas da barra lateral Space podem mostrar valores como `$jj_status`. Mudanças e expiração de TTL emitem `workspace.metadata_updated` com o snapshot mais recente do workspace. Esse evento de metadados está disponível para assinantes da API, mas não chama os hooks de evento de plugins.
+
+O Herdr normaliza o texto de apresentação antes de guardá-lo. Ele remove espaços nas pontas, remove caracteres de controle e corta `title`, `display_agent`, cada rótulo de estado e os valores de token em 80 caracteres. Um valor de token vazio depois da normalização limpa aquela chave.
+
+`source` e `applies_to_source` são identificadores de source. Eles precisam ter 80 caracteres ou menos e só podem conter letras ASCII, dígitos, dois-pontos, ponto, sublinhado e hífen.
+
+Use `ttl_ms` para metadados de vida curta. O valor precisa estar entre `1` e `86400000` milissegundos. Omita `ttl_ms` para metadados que devem ficar até serem substituídos, limpos ou até o painel ou workspace fechar. Os campos de apresentação mantêm o comportamento de expiração por source que já tinham. Cada token atualizado pela chamada recebe o próprio prazo. O Herdr não restaura metadados de token depois de um reinício do servidor.
+
+Use `seq` quando um hook pode enviar atualizações fora de ordem. Para a mesma `source`, a API aceita relatórios com número de sequência menor ou igual à última sequência aceita, mas o estado do painel os ignora. Um painel ou workspace aceita relatórios de token com sequência de no máximo 32 sources distintas durante a vida dele. Limpar ou expirar não libera essas vagas de source.
+
+## Assinaturas de eventos
+
+Assine eventos quando precisar de um fluxo de longa duração:
+
+```json
+{
+  "id": "sub_1",
+  "method": "events.subscribe",
+  "params": {
+    "subscriptions": [
+      { "type": "pane.agent_status_changed", "pane_id": "w1:p1", "agent_status": "blocked" }
+    ]
+  }
+}
+```
+
+A primeira resposta confirma a assinatura. As linhas seguintes são eventos enviados pelo servidor.
+Todas as entradas precisam ser válidas. Se algum painel citado não existe, o Herdr recusa
+a requisição inteira com um erro e fecha a conexão. Atualize a lista de painéis
+e tente de novo, em vez de supor que as outras entradas foram assinadas.
+As assinaturas de ciclo de vida começam quando a requisição é aceita e não reenviam
+eventos guardados antes desse momento.
+
+O Herdr entrega os eventos de ciclo de vida e de status de agente em lotes limitados, em ordem dentro de
+cada assinatura. O histórico de eventos não é persistente. Se um assinante fica para trás
+do histórico guardado, inclusive enquanto as assinaturas dele estão sendo inicializadas,
+o servidor envia uma resposta de erro com o `id` original da requisição e
+`error.code: "events_lost"`, e depois fecha aquela conexão de assinatura em vez de
+continuar em silêncio com eventos faltando. Os outros clientes continuam conectados.
+O histórico é compartilhado entre os tipos de evento, então o estouro é reportado mesmo quando
+os eventos descartados talvez não casassem com os filtros daquela assinatura.
+
+Ao receber `events_lost`, trate o estado em cache como desatualizado. Abra uma nova assinatura,
+espere por `subscription_started` e continue lendo enquanto pede
+`session.snapshot` em outra conexão. Use leituras de referência para reconciliar
+o estado atual: substitua o cache pelo snapshot e trate os eventos que chegam
+como sinais de invalidação que disparam outra leitura. Serialize as atualizações e
+atualize de novo se chegarem eventos enquanto uma leitura está em andamento.
+
+Snapshots e eventos não têm uma fronteira de sequência compartilhada. A ordem é garantida
+dentro de cada entrada de assinatura, não entre entradas nem em relação a um snapshot,
+então não reaplique sem condição os payloads de eventos guardados sobre o snapshot.
+A recuperação restaura o estado atual, não o histórico de eventos perdido. Outro
+`events_lost` exige assinar e reconciliar de novo. Leitores lentos podem
+precisar aumentar a vazão de leitura ou reduzir a carga de eventos.
+
+As assinaturas de eventos de workspace incluem `workspace.created`, `workspace.updated`, `workspace.metadata_updated`, `workspace.renamed`, `workspace.moved`, `workspace.reordered`, `workspace.closed` e `workspace.focused`. `workspace.metadata_updated` reporta mudanças de token e expiração de TTL sem chamar os hooks de evento de plugins. Os outros eventos de workspace descrevem o ciclo de vida da UI e do runtime do Herdr. `workspace.created` inclui a procedência opcional `workspace.worktree` quando o workspace pertence a um grupo de worktrees. `workspace.moved` inclui o `workspace_id` movido, o `insert_index` pedido e a lista ordenada `workspaces` atualizada. `workspace.reordered` inclui os `workspace_ids` movidos de forma atômica, o `before_workspace_id` opcional e a lista ordenada `workspaces` que vale como referência. `workspace.closed` inclui um snapshot final de `workspace` quando o Herdr ainda consegue identificá-lo antes da remoção.
+As assinaturas de eventos de aba incluem `tab.created`, `tab.closed`, `tab.focused`,
+`tab.renamed` e `tab.moved`. `tab.moved` inclui o `tab_id` movido,
+o `workspace_id`, o `insert_index` pedido e a lista ordenada `tabs` atualizada daquele
+workspace.
+As assinaturas de eventos de painel incluem `pane.created`, `pane.updated`, `pane.closed`, `pane.focused`,
+`pane.moved`, `pane.exited`, `pane.agent_detected`,
+`pane.output_matched`, `pane.agent_status_changed` e `pane.scroll_changed`.
+`pane.focused` também reporta mudanças manuais de seleção de painel feitas por qualquer cliente anexado
+a este servidor. Ele não move a visão dos outros clientes, e o payload não
+identifica o cliente. Selecionar um painel que já está selecionado não o emite de novo.
+Mudanças no título do terminal podem emitir `pane.updated`, mas mudanças no título cru que só alteram o spinner não o emitem quando `terminal_title_stripped` não muda.
+`pane.scroll_changed` vale para um único `pane_id` e emite `pane_id`,
+`workspace_id` e as métricas atuais de `scroll` sempre que o Herdr observa uma
+mudança no snapshot de rolagem.
+As assinaturas de eventos de layout incluem `layout.updated`. O evento carrega o
+`PaneLayoutSnapshot` atualizado de uma aba. Clientes que mantêm um cache com
+`session.snapshot` devem usar esse evento para atualizar o layout afetado com
+uma leitura de referência, porque um payload atrasado pode ser anterior ao snapshot mais recente.
+
+As assinaturas de eventos de worktree incluem `worktree.created`, `worktree.opened` e `worktree.removed`. Os eventos de worktree descrevem o ciclo de vida do checkout no Git. `worktree.created` inclui o `workspace` aberto e o `worktree` criado. `worktree.opened` inclui o `workspace` de destino, o `worktree` aberto e `already_open`. `worktree.removed` inclui o `workspace_id`, o `worktree` removido e `forced`.
+
+Use `events.subscribe` para eventos de ciclo de vida. Os helpers de espera dedicados têm documentação separada quando existe suporte a uma espera de uso único.
+
+## Leitura de painéis
+
+Use `pane.read` pela CLI, a menos que você esteja escrevendo um cliente do protocolo.
+
+```bash
+herdr pane read w1:p1 --source visible --lines 80
+herdr pane read w1:p1 --source recent --lines 120
+herdr pane read w1:p1 --source recent-unwrapped --lines 120
+herdr pane read w1:p1 --source detection
+```
+
+`recent-unwrapped` ajuda com logs porque ignora a quebra de linha automática.
+`detection` retorna o snapshot da parte de baixo do buffer que a detecção de tela dos agentes usa.
+
+## Espera por estado
+
+Use esperas para coordenar agentes e scripts.
+
+```bash
+herdr agent wait w1:p1 --until done
+herdr agent wait w1:p1 --until blocked
+```
+
+As esperas de agente observam o estado semântico, não o término de um comando qualquer.
+
+## Formatos de resposta
+
+Respostas de sucesso têm este formato:
+
+```json
+{
+  "id": "req_1",
+  "result": {
+    "type": "pane_info",
+    "pane": {
+      "pane_id": "w1:p1",
+      "terminal_id": "term_abc123",
+      "workspace_id": "w1",
+      "tab_id": "w1:t1",
+      "focused": true,
+      "agent_status": "working",
+      "revision": 42
+    }
+  }
+}
+```
+
+`server.agent_manifests` retorna as fontes ativas dos manifests de detecção de agentes e o diagnóstico das atualizações remotas sem recarregar as regras:
+
+```json
+{
+  "id": "req_1",
+  "result": {
+    "type": "agent_manifest_status",
+    "last_check_unix": 1781043522,
+    "last_result": "checked",
+    "manifests": [
+      {
+        "agent": "cursor",
+        "source": "/home/me/.config/herdr/agent-detection/cursor.toml",
+        "source_kind": "local override",
+        "active_version": "2026.06.10.1",
+        "cached_remote_version": "2026.06.10.1",
+        "local_override_shadowing_remote": true,
+        "remote_update_result": "current"
+      }
+    ]
+  }
+}
+```
+
+Campos como `last_check_unix`, `last_result`, `active_version`, `cached_remote_version`, `remote_update_result`, `remote_update_error`, `remote_last_checked_unix` e `warning` são omitidos quando não estão disponíveis. `server.reload_agent_manifests` retorna `agent_manifest_reload` com o mesmo formato de item em `manifests` depois de recarregar o cache de regras em memória.
+
+`agent.explain` avalia o snapshot de detecção do painel alvo no servidor em execução, com o cache de manifests ativo do servidor:
+
+```json
+{
+  "id": "req_2",
+  "method": "agent.explain",
+  "params": { "target": "w1:p1" }
+}
+```
+
+A resposta traz o mesmo objeto de explicação que `herdr agent explain --json` imprime, com o estado final, a fonte e a versão do manifest, a regra que casou, as evidências das regras avaliadas, o motivo de pular o estado, o motivo do fallback para ocioso e `screen_detection_skip_reason` quando uma autoridade de hook de ciclo de vida completa torna as regras de tela não autoritativas.
+
+Os clientes precisam de um servidor em execução que suporte `agent.explain`. Depois de atualizar o Herdr, reinicie o servidor ou faça o live handoff antes de depender desse método.
+
+Erros têm este formato:
+
+```json
+{
+  "id": "req_1",
+  "error": {
+    "code": "not_found",
+    "message": "pane not found"
+  }
+}
+```
+
+## Estabilidade do protocolo
+
+A UI do Herdr renderizada pelo cliente usa uma geração de endpoint estável para servidores locais e
+por SSH. As builds do cliente e do servidor não precisam ser iguais. Durante a configuração da conexão,
+os dois combinam os codecs centrais de snapshot, tela, entrada e blob, e o servidor anuncia
+os métodos de API e as capacidades opcionais que suporta. A federação por SSH salva exige a
+capacidade `surface_interest`, para que só a máquina selecionada transmita a superfície de um painel, e a
+capacidade `health_check`, para que uma conexão quebrada e silenciosa não fique como Online para sempre. Um servidor
+sem esse suporte de ciclo de vida fica em Attention até ser atualizado explicitamente. Outros métodos ausentes desativam
+só as ações correspondentes e mostram um aviso local no cliente. Eles não desconectam a UI. Ações recusadas
+ou que estouram o tempo limite também são reportadas sem encerrar a conexão. Servidores
+anteriores à geração de endpoint 1 precisam de uma última atualização.
+
+O protocolo binário numerado continua existindo para operações internas e da mesma instalação,
+incluindo o attach direto ao terminal e o live handoff. Confira `ping` ou `herdr status`
+antes de usar essas operações entre builds diferentes. Clientes da API JSON devem
+ignorar campos desconhecidos e tratar métodos não suportados como erros normais.

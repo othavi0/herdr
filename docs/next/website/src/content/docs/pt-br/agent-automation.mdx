@@ -1,0 +1,127 @@
+---
+title: Automação de agentes
+description: Use as primitivas de layout, painel e agente do Herdr para coordenar agentes de programação a partir de scripts ou de outros agentes.
+---
+
+Use o Herdr como uma camada de automação para agentes de programação. Um script pode controlá-los, ou um agente pode criar trabalho para outros agentes, inspecionar o estado deles e coletar os resultados. Escolha a primitiva que corresponde ao trabalho.
+
+## Três primitivas
+
+| Primitiva | Responsabilidade |
+| --- | --- |
+| Layout (`workspace`, `tab` e topologia de painéis) | Criar e organizar locais de terminal. |
+| Painel | Controlar um terminal bruto: rodar comandos, enviar entrada, ler a saída e esperar por uma saída. |
+| Agente | Controlar um agente de programação reconhecido pelo nome ou pelo painel e pelo estado do ciclo de vida. |
+
+Um painel existe com ou sem um agente dentro dele. Um agente é o processo reconhecido que está rodando dentro de um painel no momento. Por isso, `agent start` exige um painel de shell existente e nunca cria, divide nem move o layout.
+
+Criar um workspace também cria a primeira aba e o painel raiz dele. Criar uma aba cria o painel raiz dela. Use o ID de painel retornado para o primeiro processo e só divida quando esse layout precisar de outro terminal.
+
+Os comandos de criação imprimem JSON. Capture os IDs da resposta em vez de tentar prevê-los:
+
+```bash
+created=$(herdr workspace create --cwd ~/project --label api --no-focus)
+pane_id=$(printf '%s\n' "$created" | jq -r '.result.root_pane.pane_id')
+
+split=$(herdr pane split "$pane_id" --direction right --no-focus)
+review_pane=$(printf '%s\n' "$split" | jq -r '.result.pane.pane_id')
+```
+
+`workspace create` retorna `.result.workspace`, `.result.tab` e `.result.root_pane`. `tab create` retorna `.result.tab` e `.result.root_pane`. `pane split` retorna o novo painel como `.result.pane`.
+
+Mover um painel para outro workspace muda o ID do painel qualificado pelo workspace. Depois de qualquer `pane move`, continue com `.result.move_result.pane.pane_id`. A resposta mantém o valor antigo em `.result.move_result.previous_pane_id`. Um processo em execução mantém o ambiente do Herdr do momento em que foi aberto, mas o `HERDR_PANE_ID` antigo continua sendo um alias para esse terminal, então `--current` continua seguro. Novos comandos ainda conseguem resolver o agente pelo nome depois da mudança, mas uma espera que já estava em andamento termina com `agent_not_running`.
+
+Use os comandos de painel para shells, testes, servidores, watchers de CI e outros processos comuns de terminal. Use os comandos de agente quando o Herdr precisar entender qual agente está rodando ou se ele está `working`, `blocked`, `done`, `idle` ou `unknown`.
+
+## Identidade e inicialização do agente
+
+Um ID de painel como `w1:p2` identifica o local do terminal. Um nome de agente como `reviewer` é um alias prático para o agente atual nesse painel. Os nomes precisam corresponder a `[a-z][a-z0-9_-]{0,31}` e ser únicos entre os agentes ativos. O Herdr limpa o alias quando esse agente sai, é liberado ou é substituído. O alias não renomeia o painel de forma permanente.
+
+Os comandos de agente aceitam um nome ativo único ou o ID do painel que hospeda o agente no momento.
+
+Um painel de shell disponível está no prompt interativo do shell. O próprio shell está em primeiro plano, sem nenhum comando, editor ou agente em primeiro plano rodando. Volte o painel para o prompt antes de chamar `agent start`.
+
+`--kind` seleciona um agente suportado e o executável canônico dele. Os tipos suportados são `pi`, `claude`, `codex`, `gemini`, `cursor`, `devin`, `agy`, `cline`, `omp`, `mastracode`, `opencode`, `copilot`, `kimi`, `kiro`, `droid`, `amp`, `grok`, `hermes`, `kilo`, `qodercli`, `qwen`, `letta`, `maki` e `muse`. Os argumentos depois de `--` vão sem alteração para esse executável.
+
+Um `agent start` bem-sucedido só retorna depois que o Herdr detecta o agente esperado no mesmo terminal e o marca como pronto para entrada interativa. Se a detecção informar `blocked` durante a inicialização, o comando retorna `agent_not_ready` na hora. O nome continua disponível para `agent read` e `agent send-keys` e fica pronto para prompts depois que a detecção informar `idle`. Por padrão, a inicialização espera 30 segundos. `--timeout` precisa ser maior que 3000 e no máximo 300000 milissegundos.
+
+```bash
+herdr agent start reviewer --kind codex --pane "$review_pane" -- -m gpt-5.4
+```
+
+O Herdr detecta automaticamente os agentes abertos à mão, e você pode se referir a eles pelo ID do painel. Dê um nome a um deles quando for útil ter um alvo estável e legível:
+
+```bash
+herdr agent get w1:p2
+herdr agent rename w1:p2 reviewer
+```
+
+## Escolha a forma de controle
+
+| Objetivo | Comando |
+| --- | --- |
+| Rodar um comando de shell e enviá-lo | `pane run` |
+| Enviar texto literal sem Enter | `pane send-text` |
+| Enviar teclas de terminal ou combinações com modificadores | `pane send-keys` |
+| Esperar por um texto ou uma expressão regular | `pane wait-output` |
+| Iniciar um agente suportado em um painel existente | `agent start` |
+| Enviar um prompt, com a opção de esperar por ele | `agent prompt` |
+| Enviar teclas para a interface interativa de um agente | `agent send-keys` |
+| Esperar por um estado do ciclo de vida do agente | `agent wait` |
+
+`agent prompt` envia o texto mais um Enter codificado e respeita o modo de bracketed paste ativo no terminal. Ele pode enviar um prompt a um agente que já está trabalhando. Se o agente já estiver `blocked`, ele retorna `agent_blocked` sem enviar entrada ao terminal. Inspecione o diálogo e use `agent send-keys` para dar uma resposta deliberada. Use `agent send-keys` para interações como `esc`, `up`, `enter` ou `ctrl+c`. `escape` é aceito como alias de `esc`. Use os comandos de entrada de painel quando quiser de propósito o controle bruto do terminal.
+
+A entrada de painel vai para o terminal, seja qual for o ocupante atual. A entrada de agente resolve o agente ativo e recusa a operação se esse agente não controla mais o painel.
+
+`agent prompt --wait` recusa um agente que já está `blocked` com `agent_blocked`, sem enviar entrada nem iniciar uma espera. Caso contrário, ele grava o prompt e o Enter atrasado como um único envio ordenado antes de esperar. No Windows, o Codex recebe uma fronteira de colagem antes do Enter, para que o envio não dependa do tamanho do prompt. O timeout de quem chama inclui o tempo de envio. Se o prompt começou a partir de outro estado que não seja de trabalho, o Herdr espera até cinco segundos depois do envio para observar `working` ou `blocked`. Se não observar, retorna `agent_prompt_stalled`. Se o timeout de quem chama expirar antes, retorna o erro normal `timeout`. Isso impede que mudanças não relacionadas de `idle`, `done` ou de sessão concluam a espera. Depois que o Herdr observa atividade, ele espera pelo status estável pedido. Ele não acompanha turnos individuais. Se o agente já estiver trabalhando, a conclusão desse turno ativo pode satisfazer a espera. O `agent wait` avulso observa o agente atual e retorna na hora se o status dele já corresponder. Os dois comandos usam por padrão `idle`, `done` ou `blocked`. Repita `--until` para aceitar vários estados exatos, por exemplo `--until idle --until done`. Use `--until unknown` explicitamente quando precisar. No `agent prompt`, `--until` exige `--wait`.
+
+`idle` e `done` querem dizer que o agente está pronto para entrada. A CLI/API usa o estado de visto do servidor. `done` é ocioso, mas ainda não marcado como visto. Os comandos explícitos `pane focus` / `agent focus` marcam o alvo como visto, e as leituras não marcam. Cada cliente TUI acompanha as conclusões visualizadas de forma independente, então o badge Done de um cliente pode ser diferente do que aparece na CLI ou em outro cliente. `blocked` quer dizer que o Herdr reconheceu uma interface de aprovação ou de pergunta. `unknown` quer dizer que há um agente presente, mas o Herdr não consegue classificar o ciclo de vida dele com confiança. Isso não prova que ele concluiu com sucesso. Use estados `--until` exatos quando essa diferença importar.
+
+Ficar pronto na inicialização, restaurar uma conversa ociosa e trocar de conversa no agente não contam como trabalho concluído. Um agente que começa a trabalhar na hora pode terminar a primeira tarefa sem que o Herdr veja antes um prompt ocioso. As respostas de agente podem incluir `completion_seq`, que identifica a transição ociosa atual como trabalho concluído, independente de quem a visualizou. Esse valor corresponde ao `state_change_seq` dessa transição. A inicialização e as mudanças de sessão não o definem. Servidores mais antigos podem omitir esse campo. Clientes conectados a servidores mais antigos usam os estados de trabalho observados para controlar os badges Done, então podem perder um turno que começa e termina entre duas atualizações.
+
+Um timeout ou um `agent_prompt_stalled` não prova que nenhuma entrada foi enviada. Leia o agente antes de tentar de novo, para não enviar o mesmo prompt duas vezes. Os IDs e os nomes de agente valem dentro de um único servidor. Selecionar outra máquina na TUI não redireciona os comandos de CLI que rodam em um painel existente.
+
+`pane wait-output` não interpreta o ciclo de vida do agente. Ele consulta periodicamente o snapshot do terminal selecionado e o pesquisa na hora, então um texto que já estava lá pode corresponder. O nome da fonte padrão é `recent`. A correspondência trata essa fonte como a saída recente sem quebras de linha das últimas 80 linhas renderizadas do terminal. `--lines` muda esse limite de linhas, e `--regex` usa a sintaxe de expressões regulares do Rust e compara uma linha por vez.
+
+Na CLI, `pane read` e `agent read` imprimem o texto do terminal direto. O padrão é texto UTF-8 sem os escapes ANSI. Use `--format ansi` ou `--ansi` para manter os escapes do terminal quando a fonte os expõe. A fonte `detection` é sempre texto puro. Nas fontes recentes, `--lines N` seleciona as últimas N linhas renderizadas do terminal antes da remoção opcional das quebras. Sem essa opção, as leituras usam 80 linhas por padrão. Em `visible` e `detection`, omitir `--lines` retorna o snapshot completo, e informar a opção mantém as últimas N linhas delimitadas por nova linha. A API do socket retorna o texto em `.result.read.text`.
+
+## Leitura do histórico da tela alternativa
+
+Agentes de tela cheia como Claude Code e OpenCode renderizam o histórico da transcrição na tela alternativa do terminal, e não no histórico de rolagem do Herdr. Em um agente reconhecido e ocioso que está no fim da transcrição, as leituras de texto de `recent` ou `recent-unwrapped` usam automaticamente a interface de rolagem pelo mouse do agente quando `--lines` pede mais do que a tela visível. O Herdr coleta páginas sobrepostas e volta a área visível para o fim antes de concluir a leitura. O mesmo comportamento vale para `pane read` quando o painel contém esse agente, sem nenhuma opção a mais.
+
+As outras leituras continuam passivas. O Herdr não move a área visível da aplicação em leituras `visible`, `detection` ou ANSI, em esperas de saída e assinaturas, em um agente que você rolou à mão, em uma anexação direta ou em uma aplicação que não informa a entrada da roda do mouse. Um `agent read --lines N` explícito que precisa do histórico da tela alternativa retorna `agent_not_idle` enquanto o agente está trabalhando, bloqueado ou desconhecido. Espere ficar ocioso e tente de novo, ou use `--source visible`. As outras leituras recentes retornam a tela disponível e o histórico de rolagem do host, como antes.
+
+Se uma resposta completa continuar indisponível, peça ao agente que a escreva em Markdown em um diretório temporário e responda só com o caminho do arquivo. Depois, leia o arquivo direto.
+
+Os comandos `agent start`, `agent prompt` e `agent wait` bem-sucedidos retornam o agente atual em `.result.agent`. `pane wait-output` retorna `.result.pane_id`, `.result.matched_line` e o snapshot correspondente em `.result.read`.
+
+Os comandos de espera não têm timeout padrão e podem esperar indefinidamente. Em um timeout ou em outro erro do servidor, os comandos de CLI imprimem um erro JSON no stderr e saem com status 1. Sintaxe de CLI inválida sai com status 2.
+
+## Receitas
+
+Inicie um ajudante, passe um trabalho para ele e espere esse trabalho terminar:
+
+```bash
+split=$(herdr pane split --current --direction right --no-focus)
+review_pane=$(printf '%s\n' "$split" | jq -r '.result.pane.pane_id')
+herdr agent start reviewer --kind codex --pane "$review_pane" -- -m gpt-5.4
+herdr agent prompt reviewer "Review the current diff" --wait --timeout 120000
+herdr agent read reviewer --source recent-unwrapped --lines 120
+```
+
+Espere um agente pedir uma entrada, inspecione-o e interaja com a interface dele:
+
+```bash
+herdr agent wait reviewer --until blocked --timeout 120000
+herdr agent read reviewer --source recent-unwrapped --lines 80
+herdr agent send-keys reviewer esc
+```
+
+Rode um processo comum e espere pela saída dele sem tratá-lo como agente:
+
+```bash
+herdr pane run w1:p3 "just test --watch"
+herdr pane wait-output w1:p3 --regex "passed|failed" --timeout 120000
+```
+
+Veja a [referência da CLI](/pt-br/docs/cli-reference/) para a lista completa de comandos e opções. Os completions do shell expõem a mesma árvore de comandos de forma interativa.

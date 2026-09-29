@@ -1,0 +1,571 @@
+---
+title: Referência da CLI
+description: Comandos do Herdr para sessões, workspaces, abas, painéis, notificações, agentes, esperas, integrações e status.
+---
+
+A CLI do Herdr conversa com o servidor em execução pela mesma API de socket local que as integrações e os agentes usam.
+
+A maioria dos comandos imprime respostas em JSON, para automação determinística em scripts.
+
+## Inicialização e status
+
+```bash
+herdr                         # launch or attach to the default session
+herdr --remote workbox        # attach through SSH, using local keybindings
+herdr --default-config        # print default config
+herdr update                  # download and install from the configured channel
+herdr completion zsh          # generate a zsh completion script
+herdr channel show            # print stable or preview
+herdr channel set preview     # opt into preview builds
+herdr channel set stable      # return a direct install to stable
+herdr --version               # print version
+```
+
+Opções de inicialização e atualização:
+
+- Adicione `--session <name>` para usar uma sessão nomeada em vez da padrão.
+- Adicione `--remote-keybindings server` ao anexar (attach) remotamente para usar os atalhos do servidor em vez dos locais.
+- O handoff ao vivo experimental exige `--handoff` explícito em `herdr --remote` ou `herdr update`. Ele não é o caminho normal de configuração nem de conexão. Veja [Atualizações](/pt-br/docs/install/#atualizar).
+
+Comandos de status:
+
+```bash
+herdr status
+herdr status server
+herdr status client
+```
+
+Comandos do schema da API:
+
+```bash
+herdr api schema
+herdr api schema --json
+herdr api schema --output herdr-api.schema.json
+```
+
+`herdr api schema` imprime um resumo curto do schema do protocolo do socket que vem
+junto com o binário instalado. Use `--json` para o documento JSON Schema completo, ou
+`--output PATH` para gravar esse documento em um arquivo.
+
+## Máquinas SSH salvas
+
+```bash
+herdr machine list
+herdr machine add workbox
+herdr machine add workbox --label "Build machine"
+herdr machine rename <profile-id> --label "New name"
+herdr machine disable <profile-id>
+herdr machine enable <profile-id>
+herdr machine remove <profile-id>
+```
+
+Em um terminal interativo, `machine add` descobre as sessões em execução e deixa você escolher quando há várias. Sem sessões em execução, ou sem o Herdr instalado, o comando usa `default`. Se a consulta a um binário instalado falhar, a escolha precisa ser explícita. Adicione `--remote-session <name>` para pular a descoberta. Comandos não interativos usam `default`, a menos que essa flag seja informada. `machine list` aceita `--json` opcional para scripts. Veja [Conectar máquinas](/pt-br/docs/connecting-machines/) para o guia completo de configuração e conexão.
+
+`machine add` verifica os recursos da instalação remota, instala ou atualiza com aprovação só quando necessário e inicia o servidor em segundo plano da sessão pedida antes de salvar. Versões compatíveis não precisam ser iguais. Rode a configuração em um terminal interativo quando a instalação ou o reinício exigir aprovação. Uma configuração que falha ou é cancelada não salva perfil. Substituir um servidor em execução exige aprovação explícita, com No como resposta padrão, e encerra os processos dos painéis dele. `machine add` nunca ativa o handoff experimental de forma implícita.
+
+As mudanças se aplicam automaticamente aos clientes locais do Herdr abertos, normalmente em até um segundo. Máquinas adicionadas ou ativadas se conectam em segundo plano. Renomear não reconecta. Remover ou desativar desconecta só aquela máquina e deixa as sessões remotas dela em execução. Se você remover a máquina que está vendo, o Herdr volta para Local, ou mostra Local como indisponível até reconectar. Cada perfil guarda no estado do cliente um ID opaco, o rótulo, o destino SSH, a sessão remota explícita e o estado de ativação. O Herdr não guarda senhas, chaves privadas nem outras credenciais SSH.
+
+Use `herdr machine status [<label-or-id>] [--json]` para verificações novas e não interativas do SSH e do Herdr remoto. `reachable` descreve essa verificação, não a conexão atual de uma TUI. Use `herdr machine reconnect <label-or-id>` em um terminal para autenticar e verificar o SSH. Esse comando não instala nem atualiza o Herdr. Os clientes abertos tentam de novo as conexões que falharam em até 30 segundos. Clicar em `! auth` ou `! error` mostra o último erro e orientações para a CLI. Barras laterais recolhidas mostram `!`. Veja [Recuperar a autenticação SSH](/pt-br/docs/connecting-machines/#recuperar-a-autenticação-ssh) para os limites de cada plataforma. Para configuração remota, use `herdr --remote workbox` e adicione `--session <name>` só para uma sessão nomeada.
+
+IDs de workspace, aba e painel, e nomes de agente, pertencem a um único servidor. Selecionar uma máquina na interface não redireciona os comandos da CLI. Use o **prefixo** global `--machine <label-or-id>` para encaminhar comandos da API a uma máquina SSH salva:
+
+```bash
+herdr --machine "Build machine" agent list
+herdr --machine <profile-id> pane list
+herdr --machine "Build machine" agent prompt w1:p1 "review this change"
+herdr --machine "Build machine" worktree create --cwd /srv/project --branch review
+```
+
+O seletor precisa corresponder ao ID de um perfil salvo e ativado ou a um rótulo único, com diferença entre maiúsculas e minúsculas. Um hostname SSH qualquer não serve. O comando usa a sessão remota salva. Combinar `--machine` com `--session` ou `--remote` é erro. Sem o prefixo, os comandos mantêm o comportamento atual de sessão e socket locais.
+
+Os comandos aceitos são `workspace`, `worktree`, `tab`, `pane`, `notification`, `agent` (exceto `attach` e o `explain --file` local), `api snapshot`, `status server` e os comandos de plugin que usam a API (`link`, `unlink`, `enable`, `disable`, `list`, `action`, `log`, `pane`). Os comandos de servidor aceitam `stop`, `reload-config`, `agent-manifests` e `reload-agent-manifests`. Comandos locais de instalação e configuração, instalação de plugin, gerenciamento de sessões e anexação interativa ao terminal não são encaminhados.
+
+Pedidos e respostas trafegam pela API JSON sobre SSH não interativo. O Herdr não interpola os payloads da API no comando do shell SSH. Nenhuma TUI aberta é necessária, e a ponte nunca instala, inicia nem reinicia um servidor. Atualize a CLI local e a instalação remota do Herdr para ter suporte ao encaminhamento entre máquinas, e mantenha compatível o protocolo da API do servidor remoto em execução. Falhas de autenticação, máquinas indisponíveis e versões incompatíveis falham sem recorrer ao Local. O Herdr não repete pedidos automaticamente depois de uma falha de conexão.
+
+Comandos remotos não herdam IDs de painéis locais. Use IDs remotos explícitos. `--current` não pode se referir ao painel local de quem chama. Caminhos de worktree remotos precisam ser absolutos, `~`, ou começar com `~/` (o servidor expande). Caminhos de link de plugin precisam ser absolutos. O prefixo aponta para uma máquina por vez. Listagens combinadas e encaminhamento pelas conexões de outra TUI não fazem parte do recurso.
+
+## Autocompletar do shell
+
+```bash
+herdr completion zsh
+herdr completions zsh
+herdr completion bash
+herdr completion fish
+herdr completion powershell
+herdr completion elvish
+```
+
+`completion` imprime o script no stdout. `completions` é um alias. Para uma
+sessão temporária do zsh, carregue o script direto:
+
+```bash
+source <(herdr completion zsh)
+```
+
+Para uma configuração persistente no zsh, grave a função `_herdr` gerada em algum
+lugar do seu `fpath` antes de o `compinit` rodar:
+
+```bash
+mkdir -p ~/.zfunc
+herdr completion zsh > ~/.zfunc/_herdr
+```
+
+Depois confira se o seu `.zshrc` contém:
+
+```zsh
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit
+compinit
+```
+
+## Servidor
+
+```bash
+herdr server
+herdr server stop
+herdr server reload-config
+herdr server agent-manifests [--json]
+herdr server update-agent-manifests [--json]
+herdr server reload-agent-manifests
+```
+
+`herdr server` roda o servidor headless de forma explícita. Use em configurações supervisionadas ou no estilo de serviço. `reload-config` aplica as configurações recarregáveis sem reiniciar os painéis. `agent-manifests` mostra as fontes ativas dos manifests de detecção de agentes, as versões remotas em cache e os resultados da última atualização remota. `update-agent-manifests` busca na hora as atualizações remotas dos manifests, recarrega-as no servidor em execução e imprime o status atualizado dos manifests. Passe `--json` para a resposta de status crua. `reload-agent-manifests` recarrega os manifests de detecção de agentes no servidor em execução depois de você editar overrides locais.
+
+## Notificações
+
+```bash
+herdr notification show <title> [--body TEXT] [--position top-left|top-right|bottom-left|bottom-right] [--sound none|done|request]
+```
+
+`notification show` usa a entrega configurada em `[ui.toast]`. `--position` só afeta os toasts dentro do Herdr. `--sound` tem `none` como padrão. `done` e `request` tocam os sons já existentes de tarefa concluída e de pedido de atenção, e só quando a notificação aparece.
+
+## Sessões
+
+```bash
+herdr session list [--json]
+herdr session attach <name>
+herdr session stop <name> [--json]
+herdr session delete <name> [--json]
+```
+
+Use `default` como nome da sessão quando precisar encerrar a sessão padrão de forma explícita.
+
+## Workspaces
+
+```bash
+herdr workspace list
+herdr workspace create [--cwd PATH] [--label TEXT] [--env KEY=VALUE] [--focus] [--no-focus]
+herdr workspace get <workspace_id>
+herdr workspace focus <workspace_id>
+herdr workspace rename <workspace_id> <label>
+herdr workspace report-metadata <workspace_id> --source ID [--token NAME=VALUE] [--clear-token NAME] [--seq N] [--ttl-ms N]
+herdr workspace close <workspace_id> [--group]
+```
+
+Crie um workspace sem roubar o foco:
+
+```bash
+herdr workspace create --cwd ~/project --label api --no-focus
+```
+
+Um workspace é um projeto ou contexto de trabalho de nível superior. Criar um workspace também cria a primeira aba e o painel raiz dele. A resposta JSON expõe os IDs deles como `.result.workspace.workspace_id`, `.result.tab.tab_id` e `.result.root_pane.pane_id`.
+
+## Worktrees
+
+```bash
+herdr worktree list [--workspace ID | --cwd PATH] [--trust-repository]
+herdr worktree create [--workspace ID | --cwd PATH] [--branch NAME] [--base REF] [--path PATH] [--label TEXT] [--focus] [--no-focus] [--trust-repository]
+herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--label TEXT] [--focus] [--no-focus] [--trust-repository]
+herdr worktree remove --workspace ID [--force] [--trust-repository]
+```
+
+Worktrees são workspaces normais do Herdr com a origem de um checkout do Git. `worktree create` cria um checkout de worktree do Git, abre esse checkout como workspace e o agrupa com o workspace do repositório pai. Se `--branch` indicar uma branch local que já existe, o Herdr faz checkout dela. Caso contrário, cria a branch a partir de `--base` ou de `HEAD`. Sem `--path`, o Herdr cria o checkout em `<worktrees.directory>/<repo>/<branch-slug>`.
+
+`workspace close` fecha só o estado do Herdr. Fechar um workspace primário enquanto há workspaces de worktrees vinculadas abertos exige `--group`. Sem essa flag, o comando deixa o grupo aberto e retorna `workspace_group_close_required`. Para apagar o checkout, rode `worktree remove`. Esse comando roda `git worktree remove`, nunca apaga a branch e exige `--force` quando o Git recusa um checkout com alterações.
+
+Por padrão, o Git rejeita repositórios que pertencem a outro usuário. Se você verificou o repositório por conta própria, passe `--trust-repository` para confiar no caminho resolvido dele só naquele comando. O Herdr não altera a sua configuração do Git.
+
+## Abas
+
+```bash
+herdr tab list [--workspace <workspace_id>]
+herdr tab create [--workspace <workspace_id>] [--cwd PATH] [--label TEXT] [--env KEY=VALUE] [--focus] [--no-focus]
+herdr tab get <tab_id>
+herdr tab focus <tab_id>
+herdr tab rename <tab_id> <label>
+herdr tab close <tab_id>
+```
+
+Uma aba é outro layout de terminal dentro de um workspace. Sem `--workspace`, `tab create` usa o workspace ativo e falha se não houver nenhum. A resposta JSON expõe `.result.tab.tab_id` e `.result.root_pane.pane_id`. Fechar a última aba de um workspace também fecha o workspace, igual à ação de fechar aba da TUI. Se `confirm_close` estiver ativo e fechar a aba também fechar um grupo inteiro de worktrees, `tab close` retorna um erro `confirmation_required`.
+
+Com `ui.confirm_close` ativo, a TUI pede confirmação antes de fechar a última aba de um workspace por um atalho ou pelo menu da aba. Fechamentos comuns de aba pela CLI ou pela API continuam imediatos.
+
+Por padrão, criar workspace ou aba e dividir painel não mudam o foco. `--focus` seleciona o novo layout. `--no-focus` declara o padrão de forma explícita. Sem `--cwd`, os novos terminais seguem a política configurada em `terminal.new_cwd`, que por padrão acompanha o painel ou o workspace de origem. Cada `--env KEY=VALUE` adiciona ou substitui essa variável no novo shell raiz.
+
+## Painéis
+
+```bash
+herdr pane list [--workspace <workspace_id>]
+herdr pane current [--pane ID|--current]
+herdr pane get <pane_id>
+herdr pane layout [--pane ID|--current]
+herdr pane process-info [--pane ID|--current]
+herdr pane neighbor --direction left|right|up|down [--pane ID|--current]
+herdr pane edges [--pane ID|--current]
+herdr pane focus --direction left|right|up|down [--pane ID|--current]
+herdr pane resize --direction left|right|up|down [--amount FLOAT] [--pane ID|--current]
+herdr pane zoom [<pane_id>|--pane ID|--current] [--toggle|--on|--off]
+herdr pane rename <pane_id> <label>|--clear
+herdr pane input [<pane_id>|--pane ID|--current] --right-click herdr|pane
+herdr pane split [<pane_id>|--pane ID|--current] --direction right|down [--ratio FLOAT] [--cwd PATH] [--env KEY=VALUE] [--right-click herdr|pane] [--focus] [--no-focus]
+herdr pane swap --direction left|right|up|down [--pane ID|--current]
+herdr pane swap --source-pane ID --target-pane ID
+herdr pane move <pane_id> --tab <tab_id> --split right|down [--target-pane ID] [--ratio FLOAT] [--focus|--no-focus]
+herdr pane move <pane_id> --new-tab [--workspace ID] [--label TEXT] [--focus|--no-focus]
+herdr pane move <pane_id> --new-workspace [--label TEXT] [--tab-label TEXT] [--focus|--no-focus]
+herdr pane close <pane_id>
+```
+
+Nos comandos de painel que aceitam `--current`, o Herdr usa o `HERDR_PANE_ID` do
+painel que chama quando o comando roda dentro de um painel do Herdr. Em `pane split`,
+um ID de painel explícito ou `--pane ID` divide aquele painel. Sem alvo, o comando divide
+o painel que chama quando `HERDR_PANE_ID` está disponível e, se não estiver, o painel em foco.
+`--current` exige um painel que chama e dá erro quando `HERDR_PANE_ID` não está disponível.
+A resposta da divisão expõe o ID do novo painel como `.result.pane.pane_id`.
+
+`pane input --right-click pane` repassa gestos de clique direito sem modificador para
+uma aplicação no painel que reporta o mouse. `herdr` restaura o menu padrão do painel.
+Clicar com o botão direito na moldura do painel continua abrindo o menu do Herdr. `pane split
+--right-click pane` aplica a mesma política ao novo painel na criação.
+
+Depois de `pane move`, use `.result.move_result.pane.pane_id` nos comandos seguintes. Uma movimentação entre workspaces muda o ID do painel qualificado pelo workspace. O valor anterior fica em `.result.move_result.previous_pane_id`. O processo em execução mantém o `HERDR_PANE_ID`, o `HERDR_TAB_ID` e o `HERDR_WORKSPACE_ID` do momento em que foi iniciado. O Herdr guarda o ID antigo do painel como alias daquele terminal, então comandos de painel com `--current` continuam a resolvê-lo. Um nome de agente ativo acompanha o terminal e continua a ser resolvido depois da movimentação.
+
+Ler a saída:
+
+```bash
+herdr pane read <pane_id> [--source visible|recent|recent-unwrapped|detection] [--lines N] [--format text|ansi] [--ansi] [--raw]
+herdr pane read <pane_id> --source visible --ansi
+herdr pane read <pane_id> --source recent-unwrapped --lines 120
+```
+
+`pane read` imprime o texto do terminal em UTF-8 direto. Por padrão, o Herdr remove os escapes ANSI. Use `--format ansi` ou `--ansi` para mantê-los onde a fonte expõe estilos. A fonte `detection` é sempre texto puro. Nas fontes recentes, `--lines N` seleciona as últimas N linhas renderizadas do terminal antes de desfazer as quebras automáticas, quando pedido. Sem essa flag, a leitura usa 80 linhas por padrão. Em `visible` e `detection`, omitir `--lines` retorna o snapshot completo, e informar a flag mantém as últimas N linhas delimitadas por quebra de linha. `agent read` tem o mesmo comportamento de saída e de linhas.
+
+Enviar entrada:
+
+```bash
+herdr pane send-text <pane_id> <text>
+herdr pane send-keys <pane_id> <key> [key ...]
+herdr pane run <pane_id> <command>
+```
+
+`<key>` usa a sintaxe de combinação de teclas do Herdr: teclas imprimíveis simples como `a`,
+teclas especiais como `enter`, `tab`, `esc`, `backspace`, `left`, `right`,
+`up` e `down`, combinações com modificador como `ctrl+h`, `control+j`, `alt+x`
+e `shift+tab`, teclas de função como `f1`, e pontuação nomeada como
+`minus`, `plus` e `backtick`. As formas antigas `C-c` e `c-c` são aceitas como
+aliases de `ctrl+c`.
+`esc` é a grafia canônica. `escape` também é aceito.
+
+`pane run` respeita o modo bracketed paste ativo e envia o texto e o Enter de forma atômica. Prefira esse comando a `send-text` seguido de `send-keys Enter` para rodar comandos. As operações de envio separadas continuam de baixo nível e não submetem nada.
+
+Reportar o estado do agente a partir de hooks próprios:
+
+```bash
+herdr pane report-agent <pane_id> \
+  --source ID \
+  --agent LABEL \
+  --state idle|working|blocked|unknown \
+  [--message TEXT] \
+  [--seq N] \
+  [--agent-session-id ID] \
+  [--agent-session-path PATH] \
+  [-- RESUME_COMMAND...]
+
+herdr pane report-agent-session <pane_id> \
+  --source ID \
+  --agent LABEL \
+  [--seq N] \
+  [--agent-session-id ID] \
+  [--agent-session-path PATH] \
+  [--session-start-source SOURCE] \
+  [-- RESUME_COMMAND...]
+
+herdr pane release-agent <pane_id> \
+  --source ID \
+  --agent LABEL \
+  [--seq N]
+```
+
+`report-agent-session` atualiza a identidade da sessão nativa sem reportar o estado do ciclo de vida. `release-agent` encerra a autoridade daquela fonte sobre o ciclo de vida quando o processo do agente termina.
+
+Os argumentos depois de `--` são o comando que o Herdr roda para retomar essa sessão depois de um reinício do servidor. O primeiro argumento precisa ser um nome de comando simples no `PATH`, e nenhum argumento pode conter apóstrofo.
+
+`pane get`, `pane list`, `agent get` e `agent list` incluem um objeto `agent_session` somente leitura quando uma integração oficial reportou uma referência de sessão nativa. Se não houver referência de sessão nativa guardada, o campo fica de fora.
+
+Esses comandos incluem `foreground_cwd` quando o Herdr consegue resolver o cwd do processo em primeiro plano que controla o painel. O campo `cwd` continua sendo o cwd do painel ou do workspace, usado nos rótulos e no comportamento de acompanhar o cwd.
+
+`pane get` e `pane list` incluem `scroll` quando as métricas de rolagem do terminal estão disponíveis. `scroll.offset_from_bottom == 0` significa que o painel está no fim do histórico de rolagem.
+
+Reportar metadados do painel só para exibição, sem assumir o estado semântico:
+
+```bash
+herdr pane report-metadata <pane_id> \
+  --source ID \
+  [--agent LABEL] \
+  [--applies-to-source ID] \
+  [--title TEXT|--clear-title] \
+  [--display-agent TEXT|--clear-display-agent] \
+  [--state-label STATUS=TEXT] \
+  [--clear-state-labels] \
+  [--token NAME=VALUE] \
+  [--clear-token NAME] \
+  [--seq N] \
+  [--ttl-ms N]
+```
+
+`STATUS` é um destes: `idle`, `working`, `blocked`, `done` ou `unknown`. `--agent` e `--applies-to-source` protegem só `--title`, `--display-agent` e `--state-label`. Eles não protegem patches de tokens. Quem reporta os tokens cuida de limpá-los ou de renovar o TTL. Use `--display-agent` para mudar o nome visível.
+
+O Herdr normaliza o texto dos metadados antes de guardar. Ele remove os espaços em volta, remove caracteres de controle e limita `--title`, `--display-agent`, cada `--state-label` e os valores de token a 80 caracteres. Um valor de token vazio depois da normalização limpa aquela chave.
+
+`--token` aplica um patch a um valor de exibição nomeado. `--clear-token` remove um. Tokens não mencionados ficam como estão. Os tokens de painel ficam disponíveis nas linhas de Agent da barra lateral como `$name`. Os tokens de workspace ficam disponíveis nas linhas de Space. O TTL vale de forma independente para cada chave de token atualizada naquela chamada.
+
+`--source` e `--applies-to-source` precisam ter até 80 caracteres e só podem conter letras ASCII, dígitos, dois-pontos, ponto, sublinhado e hífen. `--ttl-ms` faz os metadados expirarem sozinhos e precisa ficar entre `1` e `86400000` milissegundos. Omita a flag para metadados que devem ficar até serem substituídos, limpos ou até o painel fechar. `--seq` permite que o Herdr ignore reportes antigos da mesma `--source`. A API aceita reportes antigos, mas o estado do painel os ignora. Um painel ou workspace aceita reportes de tokens com sequência de no máximo 32 fontes distintas durante a vida dele. Limpar ou expirar não libera essas vagas de fonte.
+
+## Agentes
+
+Para o modelo de painel versus agente e exemplos completos de orquestração, veja [Automação de agentes](/pt-br/docs/agent-automation/).
+
+```bash
+herdr agent list
+herdr agent get <target>
+herdr agent read <target> [--source visible|recent|recent-unwrapped|detection] [--lines N] [--format text|ansi] [--ansi]
+herdr agent send-keys <target> <key> [key ...]
+herdr agent prompt <target> <text> [--wait] [--until STATUS]... [--timeout MS]
+herdr agent rename <target> <name>|--clear
+herdr agent focus <target>
+herdr agent wait <target> [--until STATUS]... [--timeout MS]
+herdr agent attach <target> [--takeover]
+herdr agent start <name> --kind KIND --pane ID [--timeout MS] [-- <agent-args...>]
+herdr agent explain <target> [--json|--verbose]
+herdr agent explain --file PATH --agent LABEL [--json|--verbose]
+```
+
+O alvo de um agente é um nome único de agente ativo ou o ID do painel que hospeda o agente no momento. IDs de terminal e rótulos soltos de tipo de agente não são alvos de agente. Agentes iniciados com `agent start` exigem um nome. Agentes abertos à mão ficam sem nome e usam o ID do painel.
+
+`agent start` ativa um painel de shell que já existe e está disponível. O shell interativo do painel precisa estar em primeiro plano, sem comando, editor ou agente rodando em primeiro plano. A topologia precisa ser criada à parte. Os nomes são únicos entre os agentes ativos e precisam casar com `[a-z][a-z0-9_-]{0,31}`. O tipo seleciona o executável interativo canônico do Herdr, e os argumentos depois de `--` vão para esse executável. Os tipos aceitos são `pi`, `claude`, `codex`, `gemini`, `cursor`, `devin`, `agy`, `cline`, `omp`, `mastracode`, `opencode`, `copilot`, `kimi`, `kiro`, `droid`, `amp`, `grok`, `hermes`, `kilo`, `qodercli`, `qwen`, `letta`, `maki` e `muse`. Um nome acompanha quem ocupa o painel no momento e é limpo quando aquele agente termina, é liberado ou é substituído. Uma incerteza temporária da detecção não limpa o nome.
+
+Um início bem-sucedido só retorna depois que o agente esperado ocupa o mesmo terminal e está pronto para entrada interativa. Se a detecção reportar `blocked` durante a inicialização, o comando retorna `agent_not_ready` na hora. O nome continua disponível para `agent read` e `agent send-keys`, e fica pronto para prompts depois que a detecção reporta `idle`. O timeout padrão de inicialização é 30000 milissegundos. Valores explícitos precisam ser maiores que 3000 e no máximo 300000.
+
+`agent prompt` respeita o modo bracketed paste ativo e escreve o texto seguido de um Enter atrasado como uma única submissão ordenada, inclusive enquanto o agente está trabalhando. Sem `--wait`, o sucesso confirma as escritas, não o início de um turno. No Windows, o Codex recebe um limite de paste antes do Enter, para que a submissão não dependa do tamanho do prompt. O timeout de quem chama inclui o tempo de submissão. Se o agente já estiver `blocked`, o comando retorna `agent_blocked` sem enviar entrada. Com `--wait`, um prompt enviado a partir de outro estado que não seja trabalhando tem até cinco segundos depois da submissão para produzir um estado `working` ou `blocked` observado. Senão, o Herdr retorna `agent_prompt_stalled`. Se o timeout de quem chama expirar antes, o Herdr retorna o erro `timeout` normal. Isso impede que mudanças não relacionadas para `idle`, `done` ou de sessão concluam a espera. Depois de observar atividade, o comando espera o primeiro status estável pedido. Ele não acompanha turnos individuais. Se o agente já estiver trabalhando, o fim desse turno ativo pode satisfazer a espera. `--until` restringe os estados que casam e é rejeitado sem `--wait`. O `agent wait` avulso retorna na hora quando o status atual casa. Os dois usam `idle`, `done` ou `blocked` por padrão. Use `--until unknown` de forma explícita quando precisar.
+
+Tanto `idle` quanto `done` significam pronto para entrada. A CLI e a API usam o estado visto do servidor: `done` é ocioso mas ainda não marcado como visto, os comandos explícitos `pane focus` e `agent focus` marcam o alvo como visto, e as leituras não marcam. Cada cliente TUI acompanha as conclusões vistas de forma independente, então o badge Done dele pode diferir da CLI ou de outro cliente. `blocked` significa que o Herdr reconheceu uma interface de aprovação ou de pergunta. `unknown` significa que há um agente presente mas o Herdr não consegue classificá-lo com confiança, não que o trabalho dele deu certo.
+
+`agent send-keys` envia teclas lógicas do terminal como `enter`, `up`, `esc` ou `ctrl+c`. O Herdr valida cada tecla antes de escrever qualquer byte. `agent read` lê o fluxo do terminal resolvido, e `agent rename` dá nome a um agente já detectado.
+
+`agent explain` pede ao servidor em execução que classifique o mesmo snapshot de detecção da parte de baixo do buffer que a detecção de tela usa, então a saída ao vivo reflete o cache de manifests ativo do servidor. Como esse comando usa o método de socket `agent.explain`, depois de atualizar o Herdr reinicie o servidor ou faça handoff para um servidor atualizado antes de usar o explain ao vivo. Use `--file PATH --agent LABEL` para explicar localmente uma fixture salva. A saída padrão mostra o agente, o estado final, a fonte e a versão do manifest, a regra que casou com a evidência de região e quaisquer motivos de fallback, pulo ou aviso. Adicione `--verbose` para ver as flags de evidência visível, a versão remota em cache, o override local que sobrepõe o manifest, o status da atualização remota e a lista completa das regras avaliadas, com a evidência de matcher e de região. Adicione `--json` para relatos de issues ou testes.
+
+Use `pane send-text`, `pane send-keys`, `pane run` e `terminal attach` para terminais comuns, servidores, testes, shells ou controle de terminal de baixo nível. Use `pane run` quando quiser submeter um comando com Enter.
+
+## Anexação direta ao terminal
+
+```bash
+herdr terminal attach <terminal_id> [--takeover]
+herdr terminal session control <target> [--takeover] [--cols N] [--rows N]
+herdr terminal session observe <target> [--cols N] [--rows N]
+herdr terminal title set <title>
+herdr terminal title clear
+```
+
+Para desanexar (detach) da anexação direta, use `ctrl+b q`. Para enviar um `ctrl+b` literal, use `ctrl+b ctrl+b`.
+`terminal session control` abre um fluxo de terminal ao vivo com escrita para um alvo de painel,
+terminal ou agente. Ele imprime os mesmos registros `terminal.frame` e `terminal.closed`,
+delimitados por quebra de linha, que o modo observe. Ele lê
+comandos JSON delimitados por quebra de linha no stdin: `terminal.input`, `terminal.resize`,
+`terminal.scroll`, `terminal.mouse` e `terminal.release`. Só um controlador pode
+controlar um terminal por vez. Use `--takeover` para substituí-lo.
+`terminal.mouse` envia um evento de mouse para uma célula, contada a partir de zero, do
+viewport do controlador. Por exemplo:
+`{"type":"terminal.mouse","action":"down","button":"left","column":12,"row":5}`.
+`action` é `down`, `up`, `drag` ou `move`. `button` é `left` (padrão),
+`right` ou `middle`. `modifiers` é opcional e combina Shift = 1, Ctrl = 2
+e Alt = 4 (padrão 0). Um clique é `down` seguido de `up`. O Herdr codifica o
+evento para o modo de mouse da aplicação e o descarta quando a aplicação não
+ativou o reporte de mouse, então um shell simples nunca recebe entrada perdida.
+`move` só chega a aplicações que acompanham todo movimento do mouse.
+`terminal session observe` abre um fluxo de terminal ao vivo somente leitura para um alvo de painel,
+terminal ou agente. Ele imprime registros JSON `terminal.frame` delimitados por quebra de linha,
+com os bytes ANSI em base64, e depois um registro `terminal.closed` quando
+o servidor fecha o fluxo. Vários observadores podem acompanhar o mesmo terminal
+sem ter autoridade de entrada, redimensionamento, rolagem ou takeover.
+No Linux e no macOS, o Herdr desconecta um observador se uma escrita no socket ficar
+sem progresso por 30 segundos. Um fluxo travado pode terminar sem o registro final `terminal.closed`.
+O painel e os outros clientes continuam rodando. Painéis sem saída não disparam esse timeout.
+`terminal title clear` devolve o título da janela do terminal externo para `ui.window_title`.
+
+## Espera por saída
+
+Esperar por uma saída em um painel:
+
+```bash
+herdr pane wait-output <pane_id> (--match <text> | --regex <pattern>) [--source visible|recent|recent-unwrapped] [--lines N] [--timeout MS] [--raw]
+```
+
+Use `pane wait-output` para comandos e servidores comuns. Use `agent wait` para agentes de programação.
+
+`pane wait-output` verifica o snapshot escolhido na hora, incluindo a saída que já existe, e depois consulta de novo até casar. O nome da fonte padrão é `recent`. Na comparação, essa fonte vale como a saída recente sem quebras de linha das últimas 80 linhas renderizadas do terminal. `--lines` muda esse limite de linhas. `--match` procura uma substring literal em uma linha, e `--regex` usa a sintaxe de expressões regulares do Rust e também compara uma linha por vez.
+
+Um timeout ou `agent_prompt_stalled` não prova que o prompt não foi entregue. Inspecione o agente antes de tentar de novo.
+
+`pane wait-output` e `agent wait` esperam sem limite quando `--timeout` é omitido. Em `agent prompt --wait`, a espera pelo estado estável não tem limite depois que a atividade é observada ou quando o prompt começa em `working`. Um prompt que não começa trabalhando ainda retorna `agent_prompt_stalled` depois de cinco segundos sem atividade observada. O Herdr emite um timeout ou erro do servidor como JSON no stderr, com código de saída 1. Erros de uso da CLI saem com código 2.
+
+## Integrações
+
+```bash
+herdr integration install pi
+herdr integration install omp
+herdr integration install claude
+herdr integration install codex
+herdr integration install copilot
+herdr integration install devin
+herdr integration install droid
+herdr integration install kimi
+herdr integration install opencode
+herdr integration install kilo
+herdr integration install hermes
+herdr integration install qodercli
+herdr integration install qwen
+herdr integration install letta
+herdr integration install cursor
+herdr integration install mastracode
+herdr integration install grok
+herdr integration uninstall pi
+herdr integration uninstall omp
+herdr integration uninstall claude
+herdr integration uninstall codex
+herdr integration uninstall copilot
+herdr integration uninstall devin
+herdr integration uninstall droid
+herdr integration uninstall kimi
+herdr integration uninstall opencode
+herdr integration uninstall kilo
+herdr integration uninstall hermes
+herdr integration uninstall qodercli
+herdr integration uninstall qwen
+herdr integration uninstall letta
+herdr integration uninstall cursor
+herdr integration uninstall mastracode
+herdr integration uninstall grok
+herdr integration status [--outdated-only]
+```
+
+## Plugins
+
+Os comandos de plugin instalam e rodam plugins locais de fluxo de trabalho executáveis. Um plugin é um manifest mais comandos que rodam fora do processo do Herdr. O Herdr cuida da interface do host, e cada plugin escolhe a linguagem da própria implementação.
+
+Instalar, listar e remover plugins:
+
+```bash
+herdr plugin install <owner>/<repo>[/subdir...] [--ref REF] [--yes]
+herdr plugin list [--plugin ID] [--json]
+herdr plugin uninstall <plugin_id|owner/repo[/subdir...]>
+herdr plugin enable <plugin_id>
+herdr plugin disable <plugin_id>
+```
+
+`plugin install` aceita só a forma abreviada do GitHub, como `ogulcancelik/herdr-plugin-examples/worktree-bootstrap`. Ele usa o `git`, mostra uma prévia de confiança em terminais interativos, roda os comandos de build aceitos no manifest e guarda as instalações do GitHub em um diretório gerenciado pelo Herdr. Use `--yes` para instalações não interativas. Reinstalar um plugin gerenciado pelo GitHub substitui aquele checkout gerenciado. O Herdr recusa instalar por cima de um plugin vinculado localmente. Os manifests de plugin precisam declarar `min_herdr_version`. A instalação e o link falham quando o plugin exige um binário do Herdr mais novo. `plugin list` mostra texto legível por padrão. Passe `--json` para a resposta crua da API.
+
+A instalação e o estado de ativação dos plugins valem para todo o usuário atual. Um plugin instalado, vinculado, ativado ou desativado em uma sessão do Herdr fica disponível na hora, com o mesmo estado, em todas as sessões.
+
+Desenvolvimento local:
+
+```bash
+herdr plugin link <path> [--disabled]
+herdr plugin unlink <plugin_id>
+```
+
+`plugin link` aceita um diretório de plugin que contenha `herdr-plugin.toml` ou o caminho direto de um manifest. Use enquanto escreve ou testa um plugin a partir de um checkout local. `plugin unlink` cancela o registro do plugin e não mexe nos arquivos. `plugin uninstall` cancela o registro de um plugin e também remove os arquivos do checkout do GitHub gerenciado pelo Herdr. Nas instalações do GitHub, o uninstall aceita o id do plugin ou a mesma forma abreviada `owner/repo[/subdir...]` usada na instalação. Actions, hooks de evento, painéis e handlers de link são declarados no manifest. O registro de actions em tempo de execução não faz parte da v1.
+
+Diretório de configuração:
+
+```bash
+herdr plugin config-dir <plugin_id>
+```
+
+`plugin config-dir` imprime o diretório de configuração do plugin. Ele cria o diretório se precisar e o preenche a partir dos locais antigos de configuração do plugin, quando existem. Use esse comando em docs de configuração e em scripts de shell para apontar aos usuários um caminho estável para arquivos `.env` e outras configurações editáveis, separado do checkout gerenciado do plugin.
+
+Actions:
+
+```bash
+herdr plugin action list [--plugin ID]
+herdr plugin action invoke <action_id> [--plugin ID]
+```
+
+`plugin action invoke` inicia o comando do manifest de uma action de plugin instalado,
+ativado e compatível com a plataforma, e imprime o registro de log do comando iniciado na
+resposta JSON. Use o id qualificado da action (`plugin.id.action`) quando mais
+de um plugin usar o mesmo id de action. Ids locais de action não podem conter pontos,
+então os ids qualificados continuam sem ambiguidade mesmo quando os ids dos plugins contêm pontos.
+
+Logs:
+
+```bash
+herdr plugin log list [--plugin ID] [--limit N]
+```
+
+Painéis de terminal gerenciados:
+
+```bash
+herdr plugin pane open --plugin ID --entrypoint ID [--placement overlay|popup|split|tab|zoomed] [--width SIZE] [--height SIZE] [--workspace ID] [--target-pane PANE] [--direction right|down] [--cwd PATH] [--env KEY=VALUE] [--focus|--no-focus]
+herdr plugin pane focus <pane_id>
+herdr plugin pane close <pane_id>
+```
+
+`plugin pane open` exige que o plugin esteja vinculado, ativado e seja compatível
+com a plataforma atual. Ele inicia um comando `[[panes]]` declarado no manifest como
+um painel de terminal gerenciado pelo Herdr. O padrão do manifest é `overlay`, que abre um
+overlay temporário ampliado sobre o painel ativo. Ele também pode abrir como uma divisão, uma
+nova aba, um painel ampliado ou um `popup` modal da sessão que não muda o layout
+da aba. `--width` e `--height` definem as dimensões externas do popup em células
+do terminal ou em porcentagens como `80%`. Dimensões omitidas usam metade do
+tamanho do terminal, e o Herdr ajusta valores menores que o mínimo do popup para esse mínimo. Um popup
+não é um painel do Herdr, não exporta `HERDR_PANE_ID` e não participa
+das APIs de painel nem de agente. Painéis de plugin nativos que não são terminal ficam fora da v1 dos plugins.
+
+Os novos painéis se identificam como `TERM_PROGRAM=herdr`, com `TERM_PROGRAM_VERSION` igual à
+versão do Herdr. Eles mantêm `TERM=xterm-256color` e `COLORTERM=truecolor`.
+O Herdr remove os marcadores de sessão herdados do terminal externo (iTerm2, WezTerm, Kitty,
+Windows Terminal, tmux, screen e Zellij), a identidade `LC_TERMINAL` do iTerm2
+e os marcadores de sessão conhecidos do Claude Code, do Codex e do OMP antes de aplicar os valores
+de ambiente de inicialização explícitos. Isso impede que novos painéis se apresentem como o terminal
+ou a sessão de agente que iniciou o servidor. As variáveis de ambiente
+comuns, incluindo chaves de API e configurações de exibição, continuam herdadas em vez de
+serem trocadas pelo ambiente do cliente que se anexa. O encaminhamento do SSH agent tem
+tratamento próprio de reconexão. Essa limpeza não altera os processos de painéis que já existem.
+
+`--env KEY=VALUE` pode ser repetido nos comandos que iniciam processos. Vale só para o processo recém-iniciado. As variáveis gerenciadas pelo Herdr, como `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`, `HERDR_ENV`, `HERDR_WORKSPACE_ID`, `HERDR_TAB_ID`, `HERDR_PANE_ID`, `HERDR_PLUGIN_ID`, `HERDR_PLUGIN_ROOT`, `HERDR_PLUGIN_CONFIG_DIR`, `HERDR_PLUGIN_STATE_DIR`, `HERDR_PLUGIN_ENTRYPOINT_ID` e `HERDR_PLUGIN_CONTEXT_JSON`, prevalecem quando entram em conflito com o env passado por quem chama.
+
+## Fontes de leitura
+
+| Fonte | Significado |
+| --- | --- |
+| `visible` | Tela renderizada atual. Melhor para ciclos de feedback de interface. |
+| `recent` | Histórico de rolagem recente com as quebras de linha do terminal. |
+| `recent-unwrapped` | Histórico de rolagem recente sem quebras de linha automáticas. Melhor para logs. |
+| `detection` | Snapshot da parte de baixo do buffer usado pela detecção de tela dos agentes. |
+
+Esses significados valem para leituras. Só em `pane wait-output`, tanto `recent` quanto `recent-unwrapped` buscam no snapshot recente sem quebras de linha. `recent` continua sendo a grafia padrão.
+
+## Variáveis de ambiente
+
+| Variável | Finalidade |
+| --- | --- |
+| `HERDR_CONFIG_PATH` | Sobrescreve o caminho do arquivo de configuração. |
+| `HERDR_SESSION` | Seleciona uma sessão nomeada para os comandos da CLI. |
+| `HERDR_SOCKET_PATH` | Override de baixo nível do caminho do socket. |
+| `HERDR_PROCESS_DETECTION` | Estratégia de detecção de processos no Linux: `native` (padrão) ou `child-groups`, que precisa ser ativada. |
+| `HERDR_ENV` | Vale `1` dentro dos processos de painel gerenciados pelo Herdr. |
+| `HERDR_PANE_ID` | ID público do painel para o processo do painel em execução. |
+| `HERDR_TAB_ID` | ID público da aba para o processo do painel em execução. |
+| `HERDR_WORKSPACE_ID` | ID público do workspace para o processo do painel em execução. |
+| `HERDR_LOG` | Define o filtro de log, por exemplo `HERDR_LOG=herdr=debug`. |
+| `HERDR_DISABLE_SOUND` | Desativa a reprodução de sons mesmo quando as notificações sonoras estão ativadas. |

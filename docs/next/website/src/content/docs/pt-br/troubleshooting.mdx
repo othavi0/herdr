@@ -1,0 +1,120 @@
+---
+title: Solução de problemas
+description: Diagnostique problemas comuns de instalação, entrada no terminal, sessão, atalhos de teclado e acesso remoto.
+---
+
+Comece pelas versões e pelo status da sessão:
+
+```bash
+herdr -V
+herdr status
+```
+
+Anote também o sistema operacional, o nome e a versão do terminal externo, se a sessão é local ou remota e se o tmux está envolvido.
+
+## A janela do IME CJK aparece no lugar errado ou o cursor pisca no Windows
+
+No Windows nativo e no WSL, o Herdr usa por padrão um cursor desenhado nas células, porque o cursor nativo pode piscar, pular ou mostrar posições desatualizadas enquanto multiplexadores baseados em ConPTY redesenham a tela. Um cursor desenhado nas células não fornece a âncora de cursor nativa que a interface de composição do IME de coreano, japonês e chinês usa.
+
+Se a janela de composição ou de candidatos do IME aparecer no lugar errado, ative o cursor nativo:
+
+```toml
+[ui]
+host_cursor = "native"
+```
+
+O modo nativo restaura a âncora do IME, mas pode trazer de volta artefatos ocasionais de movimento do cursor enquanto há saída ativa. Volte ao cursor visualmente estável com `host_cursor = "drawn"`, ou remova a configuração para usar o padrão do Windows. Veja [Suporte a Windows](/pt-br/docs/windows-beta/) para a limitação atual.
+
+## Enter, Tab ou Backspace dispara duas vezes
+
+Versões antigas de alguns terminais podem emitir a liberação de Enter, Tab e Backspace com os mesmos bytes do pressionamento quando uma aplicação ativa o reporte de eventos de teclado do Kitty. O Herdr não consegue distinguir esses bytes duplicados depois que o terminal os envia.
+
+Atualize o terminal externo para uma versão que contenha a correção upstream:
+
+| Terminal | Versão mínima com a correção |
+| --- | --- |
+| kitty | 0.33.0 |
+| foot | 1.20.0 |
+| Alacritty | 0.15.0 |
+
+Isso acontece principalmente com pacotes de terminal antigos de distribuições Linux de suporte de longo prazo. Veja a [issue #1116 do Herdr](https://github.com/herdrdev/herdr/issues/1116) para as capturas que confirmam o limite e as referências upstream. Se o problema continuar em uma versão atual do terminal, reporte a versão exata do terminal e se o problema também acontece fora do Herdr.
+
+## Option+Left ou Option+Right insere `;3D` ou `;3C`
+
+Os terminais costumam enviar Alt+Left e Alt+Right como as sequências padrão de seta com modificador `ESC[1;3D` e `ESC[1;3C`. No macOS, o terminal externo precisa antes estar configurado para tratar Option como Alt. Se o shell não associar essas sequências, o zsh pode mostrar os caracteres que sobram como `;3D` ou `;3C`. Isso pode acontecer com o kitty, o Alacritty e outros terminais. O Herdr e o tmux preservam a entrada original da seta com modificador.
+
+Adicione associações explícitas no zsh se quiser que as setas com modificador naveguem por palavras em todos os terminais e shells aninhados:
+
+```zsh
+bindkey $'\e[1;3D' backward-word
+bindkey $'\e[1;3C' forward-word
+```
+
+O kitty pode parecer funcionar de outro jeito fora do Herdr porque a integração automática dele com o zsh adiciona essas associações só aos shells que o próprio kitty inicia, não aos shells criados por multiplexadores de terminal. Siga as [instruções de integração manual com o shell](https://sw.kovidgoyal.net/kitty/shell-integration/#manual-shell-integration) do kitty, ou mapeie as teclas no `kitty.conf` antes que elas cheguem ao shell:
+
+```text
+map alt+left send_text all \x1bb
+map alt+right send_text all \x1bf
+```
+
+O Herdr não reescreve as setas com modificador de propósito, porque aplicações de terminal podem usar Alt+Left e Alt+Right diretamente. Veja a [issue #1370 do Herdr](https://github.com/herdrdev/herdr/issues/1370) para a investigação.
+
+## O Herdr foi atualizado, mas a sessão em execução continua antiga
+
+Atualizar o binário não substitui um servidor compatível que já está rodando. Inicie o Herdr de novo para usar o cliente atualizado. Se você também precisar das mudanças de servidor da versão, confira `herdr status`, depois encerre a sessão e abra o Herdr de novo:
+
+```bash
+herdr server stop
+herdr
+```
+
+Encerrar um servidor encerra os processos dos painéis dele. Sessões nomeadas usam `herdr session stop <name>`. Veja [Instalar o Herdr](/pt-br/docs/install/#atualizar) para o comportamento do atualizador, dos gerenciadores de pacotes e do handoff ao vivo.
+
+## Ferramentas que dependem do Keychain falham dentro do Herdr no macOS
+
+Confira o contexto de inicialização do servidor a partir de um painel do Herdr:
+
+```bash
+launchctl managername
+```
+
+`Background` é normal para servidores do macOS iniciados automaticamente e, sozinho, não indica problema com o Keychain. Se o acesso ao Keychain falhar e o servidor tiver sido iniciado por SSH ou por um job em segundo plano, encerre o servidor e inicie o Herdr de novo a partir de um terminal gráfico normal:
+
+```bash
+herdr server stop
+herdr
+```
+
+Encerrar o servidor encerra os processos dos painéis dele. Os painéis do Herdr herdam o contexto de inicialização do macOS do servidor de longa duração, então um servidor iniciado por SSH ou por um job em segundo plano pode não ter acesso aos serviços interativos do Keychain. Veja a [issue #966 do Herdr](https://github.com/herdrdev/herdr/issues/966) para mais detalhes.
+
+## SSH ou DNS falha depois do logout no macOS
+
+Os servidores do macOS iniciados automaticamente usam um contexto de serviço por usuário, para que o logout não deixe os painéis deles com uma conexão morta com os serviços do macOS. Servidores iniciados com `herdr server` explícito mantêm o contexto de quem os chamou.
+
+Um servidor mais antigo pode sobreviver ao logout e perder a consulta de usuários e o DNS. Os sintomas incluem `No user exists for uid 501`, `Could not get manager name.` e `curl: (6) Could not resolve host`. Fazer login de novo não conserta esse servidor. Encerre a sessão afetada e inicie o Herdr a partir de um terminal gráfico no novo login. Isso encerra os processos ativos dos painéis, mas restaura o layout salvo da sessão. O handoff ao vivo preserva o contexto de serviço do servidor de origem e os processos de painel que já existem. Por isso os servidores mais antigos precisam de um reinício completo da sessão para adotar essa correção. O handoff não consegue consertar o contexto herdado deles.
+
+Se um servidor recém-iniciado continuar com esse problema, procure `could not select persistent user service context` no `herdr-server.log`. O Herdr mantém o contexto herdado se as APIs necessárias do macOS não estiverem disponíveis. Veja a [issue #4100 do Herdr](https://github.com/herdrdev/herdr/issues/4100).
+
+## O comando `herdr` não é encontrado
+
+Reinicie o terminal para que ele recarregue o ambiente e depois confirme se o diretório de instalação do Herdr está no `PATH`. Em instalações por gerenciador de pacotes, use esse gerenciador para atualizar o Herdr e colocá-lo no `PATH`. Veja [Instalar o Herdr](/pt-br/docs/install/#verificar).
+
+## Um atalho direto não faz nada
+
+O sistema operacional ou o terminal externo pode consumir a combinação de teclas antes de ela chegar ao Herdr. Libere a combinação nessa camada ou escolha outro atalho. Veja [Teclado](/pt-br/docs/keyboard/#sem-prefixo) para os conflitos conhecidos e os padrões seguros.
+
+## A anexação remota não consegue autenticar
+
+Primeiro confirme que o OpenSSH normal funciona com `ssh <host>`. Para uma chave protegida por senha em um shell não interativo, em um job de CI ou em um terminal no celular, carregue a chave no `ssh-agent` antes de iniciar a anexação (attach) remota. Veja [Persistência e acesso remoto](/pt-br/docs/persistence-remote/#anexar-remotamente-via-ssh).
+
+## Encontrar os logs de diagnóstico
+
+Por padrão, os logs do Herdr ficam em `~/.config/herdr/`:
+
+```text
+herdr.log
+herdr-client.log
+herdr-server.log
+```
+
+Defina `HERDR_LOG=herdr=debug` para ter mais detalhes. Ao reportar um problema, inclua o log atual e os arquivos rotacionados ao lado dele. Veja [Configuração](/pt-br/docs/configuration/#logs).

@@ -1,0 +1,149 @@
+---
+title: Suporte a Windows
+description: Suporte nativo ao Windows, fluxos de uso e limitações conhecidas.
+---
+
+O suporte nativo ao Windows tem disponibilidade geral.
+
+No Windows, o Herdr usa o ConPTY e o comportamento de processos e runtime do Windows, em vez do modelo de PTY do Unix em torno do qual o Herdr foi construído originalmente. A maioria dos fluxos principais é suportada, mas alguns recursos são diferentes do Linux e do macOS ou continuam dependendo da plataforma. O Windows pode receber mais correções específicas da plataforma à medida que essas lacunas restantes forem fechadas.
+
+Instale o Herdr nativamente no Windows com o PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://herdr.dev/install.ps1 | iex"
+```
+
+Se a segurança de endpoint bloquear esse comando PowerShell sem arquivo, abra o Prompt de Comando e execute:
+
+```cmd
+curl.exe -fsSLo install.cmd https://herdr.dev/install.cmd && install.cmd && del install.cmd
+```
+
+As builds para Windows estão disponíveis nos canais de atualização estável e preview. Novas instalações usam o estável por padrão, e o estável é o recomendado para o uso normal. Instalações preview já existentes continuam no preview até você executar `herdr channel set stable`. Se uma build preview antiga recusar esse comando, execute `herdr update` uma vez no preview e tente de novo. O preview traz correções mais novas e menos testadas do `master` e pode ter regressões. Ative-o com `herdr channel set preview` só quando quiser essa troca.
+
+O instalador guarda as versões em `%USERPROFILE%\.herdr\packages\standalone\releases`, coloca no PATH o diretório da versão ativa, mantém `%LOCALAPPDATA%\Programs\Herdr\bin` como alias de compatibilidade estável e guarda algumas versões antigas, para que processos em execução não bloqueiem as atualizações.
+
+Para testes internos, `HERDR_MANIFEST_URL` pode apontar o instalador para um manifest personalizado em vez do manifest estável ou preview do Herdr. Defina `HERDR_CHANNEL=preview` junto com um manifest preview personalizado.
+
+## Suportado no Windows
+
+| Recurso | Status |
+| --- | --- |
+| Sessões persistentes locais | suportado |
+| Painéis nativos pelo ConPTY | suportado |
+| Anexação pelo app Windows Terminal / PowerShell | suportado |
+| `herdr --remote` e máquinas SSH salvas para hosts Linux/macOS/Windows | suportado; a anexação interativa e a configuração de máquinas salvas podem instalar ou atualizar pacotes do Windows depois de uma confirmação; a reconexão em segundo plano só descobre pacotes instalados |
+| Imagens da área de transferência remota e arquivos de imagem arrastados | suportado |
+| Painéis `cmd.exe` | suportado |
+| Entrada nativa de teclado e mouse | suportado |
+| Diretório de trabalho (cwd) inicial e rótulos de workspace | suportado |
+| cwd de abertura do painel | suportado |
+| Descoberta de comandos de agente | suportado |
+| Integrações suportadas em que o agente informa o próprio estado | suportado |
+| Detecção de agentes pela árvore de processos | suportado |
+| Detecção de Git/worktree a partir de um cwd conhecido | suportado |
+| Notificações do sistema e sons MP3 | suportado |
+| Plugins | preview |
+| Histórico de tela do painel | suportado |
+| Override de abertura aninhada | suportado |
+
+As sessões persistentes locais continuam rodando depois que o cliente desanexa (detach) ou a janela do terminal dele fecha. Os servidores e os processos de painel abertos pelo OpenSSH do Windows também sobrevivem ao logout. Execute `herdr` de novo para reconectar.
+
+A detecção de processos de agente no Windows varre os descendentes do shell do painel e reconhece agentes diretos e wrappers de comando comuns, incluindo cadeias de processos do npm/Node e do Git Bash. Ela segue os agentes abertos pelo Git Bash através de fronteiras de `exec` emuladas, mas não é igual à detecção por grupo de processos em primeiro plano do Unix.
+
+A instalação de integrações no Windows suporta hoje Pi, OMP, Claude Code, Codex, GitHub Copilot CLI, Devin CLI, OpenCode, Kilo Code CLI, Droid, Kimi Code CLI, Qoder CLI e Antigravity CLI. A disponibilidade é menor que no Unix. O Herdr esconde ou recusa integrações cujo formato de instalação não é suportado no Windows.
+
+Os plugins suportam `windows` como plataforma de manifest no preview. A instalação pelo GitHub, o link local, os comandos de build, as ações, os eventos e os painéis de plugin funcionam na base do melhor esforço no Windows. Os comandos são comandos argv e precisam ser compatíveis com o Windows. Shims de pacotes Node como `npm`, `bun` e `node` devem funcionar quando estão no `PATH`, enquanto exemplos só para Unix que usam `sh` ou Bash precisam de alternativas específicas para o Windows. Os filtros de plataforma pulam comandos de build não suportados e retornam `platform_unsupported` para ações ou painéis não suportados.
+
+## Suporte parcial
+
+| Recurso | Status |
+| --- | --- |
+| cwd ao vivo depois de um `cd` no shell | parcial |
+| cwd ao vivo pela integração do shell/OSC7 | suportado |
+| Colar imagem da área de transferência para agentes em painéis locais | depende do terminal e do agente |
+| Ancoragem da composição do IME CJK | parcial |
+| Troca da fonte de entrada no prefixo (IME coreano) | parcial |
+| Renderização de gráficos Kitty | depende do terminal |
+| Renderização do cursor do host | parcial |
+
+O Herdr consegue abrir painéis no diretório certo e criar o workspace inicial a partir do diretório onde você iniciou o Herdr. Depois da inicialização, o campo de processo que o Herdr consegue inspecionar não acompanha de forma confiável as mudanças lógicas de `cd` posteriores no PowerShell. Use as integrações do Herdr ou a integração do shell no prompt para informar o cwd ao vivo.
+
+Durante o `herdr --remote`, a tecla configurada para colar imagem remota lê uma imagem da área de transferência do Windows e a transfere para o host remoto. Arrastar um arquivo de imagem local para o Windows Terminal também transfere esse arquivo e cola o caminho remoto dele.
+
+A troca da fonte de entrada no prefixo está disponível como experimento opcional para o IME coreano. Ela troca a entrada Hangul para inglês enquanto os comandos de prefixo estão ativos e depois restaura o modo anterior:
+
+```toml
+[experimental]
+switch_ascii_input_source_in_prefix = true
+```
+
+Essa opção ainda não suporta outros IMEs do Windows. Veja [Configuração](/pt-br/docs/configuration/#troca-da-fonte-de-entrada-no-prefixo).
+
+Alguns agentes no Windows conseguem receber `ctrl+v` e ler imagens da área de transferência direto. O leitor de imagens da área de transferência do próprio Herdr não está ligado aos painéis nativos locais do Windows, então colar imagens pelo próprio agente continua dependendo do terminal e do agente. Atalhos de colar imagem dos agentes, como `alt+v`, não acrescentam uma ponte de área de transferência local gerenciada pelo Herdr. A ponte de imagens da área de transferência remota é suportada à parte, pelo `herdr --remote` para hosts Linux, macOS e Windows.
+
+Os gráficos Kitty vêm ativados por padrão e dependem do terminal externo. O Herdr emite a saída do protocolo de gráficos Kitty no Windows do mesmo jeito que nas outras plataformas. Esse caminho foi testado com o WezTerm no Windows hospedando o Herdr pelo WSL, mas nem todas as combinações de terminal nativo do Windows com ConPTY foram verificadas. O Windows Terminal não expõe o caminho de gráficos Kitty que o Herdr usa. Defina `[terminal].kitty_graphics = false` se o terminal externo tratar mal a saída de gráficos.
+
+## Ressalvas conhecidas
+
+### Renderização do cursor
+
+O Herdr depende do ConPTY nos painéis nativos do Windows. O caminho do cursor do terminal do Windows pode expor posições intermediárias enquanto um multiplexador redesenha a tela. Um cursor nativo pode piscar, pular ou ficar por um instante em uma posição antiga durante uma saída ativa. Esse comportamento também se reproduz em outros multiplexadores de terminal nativos do Windows e em testes de estresse diretos de posição do cursor VT, então o Herdr não consegue eliminá-lo mantendo o comportamento nativo do cursor.
+
+Para priorizar a estabilidade visual, o padrão `host_cursor = "auto"` desenha o cursor do Herdr como conteúdo de célula do terminal no Windows nativo e no WSL. Os outros clientes Linux e macOS continuam usando o cursor nativo do terminal. O cursor desenhado no Windows é fixo e não pisca, mas não oferece o piscar, o formato nem a cor de cursor nativos do terminal externo.
+
+O Windows não usa um cursor desenhado para posicionar a composição do IME e a interface de candidatos. Por isso, a interface do IME coreano, japonês ou chinês pode aparecer no lugar errado. Se isso afetar você, volte a usar o cursor do terminal externo:
+
+```toml
+[ui]
+host_cursor = "native"
+```
+
+O modo nativo restaura a âncora do IME, mas pode trazer de volta o cursor piscando, pulando ou parado em posições antigas de vez em quando durante uma saída ativa.
+
+### Teclado e mouse
+
+Nem todos os terminais do Windows informam as teclas com modificadores no mesmo formato. O Herdr preserva o relato de mouse e o `ctrl+j` no Windows Terminal e no Alacritty no Windows. O caminho de entrada nativo do Windows também preserva pressionamentos físicos de teclas, repetições, liberações, o Escape isolado e o `shift+enter` nos painéis ConPTY padrão. As teclas com modificadores ainda dependem de o terminal externo informar um evento de tecla distinto. Se ele informar `shift+enter` como um Enter simples, o Herdr só consegue repassar um Enter simples.
+
+Os pacotes do Windows incluem o runtime ConPTY local do app mais recente da Microsoft, porque o ConPTY do sistema em builds mais antigas do Windows 10 descarta sequências do protocolo de teclado Kitty que agentes como Kimi e Pi usam. Defina `HERDR_WINDOWS_CONPTY=system` antes de iniciar o Herdr só ao diagnosticar um problema de compatibilidade com o runtime embutido.
+
+## Copiar e colar
+
+A cópia de texto dos painéis do Herdr funciona no Windows. Arraste para selecionar texto dentro de um painel e copiar pelo Herdr.
+
+Para colar texto, use `ctrl+shift+v` no Windows Terminal. O Herdr envolve a colagem de texto com várias linhas em marcadores de bracketed paste, para que shells e prompts de agentes a recebam como uma única colagem em vez de enviar cada linha separadamente. Segure `shift` e clique com o botão direito para usar a ação de colar do terminal externo em vez de enviar o clique pelo Herdr.
+
+Os clientes Windows também recuperam o texto quando o WezTerm envolve uma sequência completa de pares de pressionar e soltar caractere do Win32 em marcadores de colagem bruta. Essa regra de compatibilidade não decodifica texto misto nem relatos incompletos. Um texto literal da área de transferência formado só por relatos Win32 correspondentes não se distingue dessa codificação e também é decodificado.
+
+## Não suportado no Windows
+
+| Recurso | Status |
+| --- | --- |
+| Anexação direta a um terminal (`herdr terminal attach`) | não suportado |
+| Handoff ao vivo do servidor | não suportado |
+| Handoff de descritores de arquivo do Unix | não suportado |
+| Grupos de processos em primeiro plano do Unix | não suportado |
+| Ponte de imagens da área de transferência do Herdr em painéis nativos locais | não suportado |
+| Binário assinado / evitar o SmartScreen | não suportado |
+
+No Windows Terminal, use o mesmo comando remoto do Linux e do macOS:
+
+```powershell
+herdr --remote workbox
+```
+
+O host de destino pode rodar Linux, macOS ou Windows. Em hosts Windows, a anexação remota reaproveita um pacote compatível do `PATH` ou da versão gerenciada ativa. A anexação direta interativa e a configuração de máquinas salvas perguntam antes de instalar ou atualizar o pacote completo quando necessário. A reconexão em segundo plano de máquinas salvas só descobre pacotes instalados e não consegue perguntar sobre instalação ou atualizações. O Herdr usa o cliente OpenSSH do Windows instalado e a sua configuração do SSH. O OpenSSH do Windows não usa o reaproveitamento por socket de controle do Unix que o Herdr usa, então a autenticação por chave pelo `ssh-agent` do Windows é o recomendado para evitar prompts repetidos durante a configuração remota.
+
+As atualizações no Windows rodam pelo instalador do Windows e atualizam o caminho da versão ativa. Novos terminais e sessões SSH reconectadas recebem esse caminho. Inicie o Herdr neles para usar o cliente atualizado. Servidores compatíveis em execução mantêm os painéis vivos. Reinicie um servidor mais tarde só quando precisar das mudanças do lado do servidor da nova versão. O handoff ao vivo só existe no Unix.
+
+## Como relatar problemas no Windows
+
+Inclua:
+
+- A versão do Herdr.
+- A versão do Windows.
+- O app de terminal.
+- O shell, como PowerShell ou cmd.
+- Se você usou um `HERDR_SESSION` nomeado.
+- Os logs relevantes do Herdr.
+- Os passos exatos para reproduzir.
